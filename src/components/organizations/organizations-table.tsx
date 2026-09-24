@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { FormModal } from "@/components/form-modal/form-modal";
+import type { FormValues } from "@/components/form-modal/types";
+import { organizationFormFields } from "./organization-form-fields";
 import type { Organization } from "@/types/organization";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -39,6 +42,24 @@ function HeaderRow() {
 
 export function OrganizationsTable({ organizations }: { organizations: Organization[] }) {
   const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+
+  // F2 opens the Add modal, matching the button hint.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "F2") {
+        event.preventDefault();
+        setAddOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  async function handleCreate(values: FormValues) {
+    // TODO: POST to the organizations API once the backend route exists.
+    console.info("create organization", values);
+  }
 
   const query = search.trim().toLowerCase();
   const rows = query
@@ -68,9 +89,9 @@ export function OrganizationsTable({ organizations }: { organizations: Organizat
           onChange={(e) => setSearch(e.target.value)}
           className="ml-5 h-[27px] w-[262px] border border-[#ccc] px-2 text-[13px] outline-none focus:border-brand-add"
         />
-        {/* Add flow comes later. */}
         <button
           type="button"
+          onClick={() => setAddOpen(true)}
           className="ml-auto h-[31px] w-[120px] rounded-[2px] bg-brand-add text-[13px] font-bold text-white transition-colors hover:bg-brand-add-hover"
         >
           Add <span className="text-[10px] font-normal">(F2)</span>
@@ -126,6 +147,14 @@ export function OrganizationsTable({ organizations }: { organizations: Organizat
           </tfoot>
         </table>
       </div>
+
+      <FormModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Add Organization"
+        fields={organizationFormFields}
+        onSubmit={handleCreate}
+      />
     </section>
   );
 }
