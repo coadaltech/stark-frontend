@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FormModal } from "@/components/form-modal/form-modal";
 import type { FormValues } from "@/components/form-modal/types";
 import { organizationFormFields } from "./organization-form-fields";
 import type { Organization } from "@/types/organization";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { createOrganization } from "@/lib/organizations";
 import { cn } from "@/lib/utils";
 
 const columns = [
@@ -40,7 +42,8 @@ function HeaderRow() {
   );
 }
 
-export function OrganizationsTable({ organizations }: { organizations: Organization[] }) {
+export function OrganizationsTable({ organizations, loadError }: { organizations: Organization[]; loadError?: string }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
@@ -57,8 +60,15 @@ export function OrganizationsTable({ organizations }: { organizations: Organizat
   }, []);
 
   async function handleCreate(values: FormValues) {
-    // TODO: POST to the organizations API once the backend route exists.
-    console.info("create organization", values);
+    // Username/password are collected by the form but not stored yet (organization row only).
+    await createOrganization({
+      OrganizationName: values.OrganizationName,
+      OrganizationOwnerName: values.OrganizationOwnerName,
+      OrganizationMobile: values.OrganizationMobile,
+      OrganizationAddress: values.OrganizationAddress,
+      OrganizationTheme: values.OrganizationTheme,
+    });
+    router.refresh();
   }
 
   const query = search.trim().toLowerCase();
@@ -106,8 +116,11 @@ export function OrganizationsTable({ organizations }: { organizations: Organizat
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="h-[140px] text-center text-[13px] font-semibold text-[#888]">
-                  No records found
+                <td
+                  colSpan={columns.length}
+                  className={cn("h-[140px] text-center text-[13px] font-semibold", loadError ? "text-red-600" : "text-[#888]")}
+                >
+                  {loadError ?? "No records found"}
                 </td>
               </tr>
             ) : (

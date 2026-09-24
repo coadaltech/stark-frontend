@@ -65,6 +65,7 @@ function FormModalBody({
   const [values, setValues] = useState(() => initialValues(fields));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   const setValue = (name: string, value: string) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -78,18 +79,35 @@ function FormModalBody({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const focusField = (name: string) => form.querySelector<HTMLElement>(`[name="${name}"]`)?.focus();
+    setSubmitError(undefined);
     const trimmed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.trim()]));
     const nextErrors = validateAll(fields, trimmed);
     setErrors(nextErrors);
     const firstInvalid = fields.find((f) => nextErrors[f.name]);
     if (firstInvalid) {
-      event.currentTarget.querySelector<HTMLElement>(`[name="${firstInvalid.name}"]`)?.focus();
+      focusField(firstInvalid.name);
       return;
     }
     setSubmitting(true);
     try {
       await onSubmit(trimmed);
       onClose();
+    } catch (error) {
+      // Server-side field errors (e.g. ApiError.fields) go under their inputs; anything else is shown above the buttons.
+      const serverFields = (error as { fields?: Record<string, string> }).fields ?? {};
+      const known = Object.fromEntries(Object.entries(serverFields).filter(([name]) => fields.some((f) => f.name === name)));
+      setErrors(known);
+      const firstServerInvalid = fields.find((f) => known[f.name]);
+      if (firstServerInvalid) focusField(firstServerInvalid.name);
+      setSubmitError(
+        error instanceof TypeError
+          ? "Could not reach the server. Please try again."
+          : error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +167,11 @@ function FormModalBody({
       </div>
 
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[#e5e5e5] px-[15px] py-4">
+        {submitError && (
+          <p role="alert" className="mr-auto text-[12.5px] font-semibold text-red-600">
+            {submitError}
+          </p>
+        )}
         <button
           type="submit"
           disabled={submitting}
