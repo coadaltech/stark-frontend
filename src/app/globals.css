@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-open-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -127,4 +127,17 @@
   html {
     @apply font-sans;
   }
+}
+/* OrgStark brand palette */
+@theme {
+  --color-brand: #11897a;
+  --color-brand-nav: #0c6f63;
+  --color-brand-nav-active: #075448;
+  --color-brand-action: #0d7a68;
+  --color-brand-page: #d8dce8;
+  --color-brand-row-alt: #f5f7f9;
+  --color-brand-add: #1ea1dc;
+  --color-brand-add-hover: #178bbf;
+  --color-brand-pill: #3cb44a;
+  --color-brand-help: #f5a623;
 }
