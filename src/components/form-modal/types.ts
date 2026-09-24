@@ -6,8 +6,10 @@ type BaseField = {
   placeholder?: string;
   required?: boolean;
   defaultValue?: string;
-  /** Share of the 3-column row the field occupies. Defaults to "third". */
+  /** Share of the row the field occupies. Defaults to "third". */
   width?: "third" | "half" | "two-thirds" | "full";
+  /** Exact width in columns of the 12-column grid; overrides `width`. */
+  span?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
   /** Force the field onto a new row. */
   startRow?: boolean;
   /** Extra check run after the required check; return an error message to fail. */

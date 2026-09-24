@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormModal } from "@/components/form-modal/form-modal";
 import type { FormValues } from "@/components/form-modal/types";
+import { EditOrganizationModal } from "./edit-organization-modal";
 import { organizationFormFields } from "./organization-form-fields";
 import type { Organization } from "@/types/organization";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -46,9 +47,12 @@ export function OrganizationsTable({ organizations, loadError }: { organizations
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<Organization | null>(null);
 
-  // F2 opens the Add modal, matching the button hint.
+  // F2 opens the Add modal, matching the button hint (not while editing).
+  const isEditing = editing !== null;
   useEffect(() => {
+    if (isEditing) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "F2") {
         event.preventDefault();
@@ -57,7 +61,7 @@ export function OrganizationsTable({ organizations, loadError }: { organizations
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isEditing]);
 
   async function handleCreate(values: FormValues) {
     // Username/password are collected by the form but not stored yet (organization row only).
@@ -142,6 +146,8 @@ export function OrganizationsTable({ organizations, loadError }: { organizations
                   <td>
                     <button
                       type="button"
+                      onClick={() => setEditing(org)}
+                      aria-label={`Action: ${org.OrganizationName}`}
                       className="rounded-[2px] bg-brand-action px-2.5 py-[3px] text-[10.5px] text-white hover:bg-brand-nav-active"
                     >
                       Action
@@ -168,6 +174,7 @@ export function OrganizationsTable({ organizations, loadError }: { organizations
         fields={organizationFormFields}
         onSubmit={handleCreate}
       />
+      <EditOrganizationModal organization={editing} onClose={() => setEditing(null)} />
     </section>
   );
 }

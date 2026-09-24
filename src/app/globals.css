@@ -141,3 +141,8 @@
   --color-brand-pill: #3cb44a;
   --color-brand-help: #f5a623;
 }
+
+@theme {
+  --color-brand-save: #3aaf66;
+  --color-brand-save-hover: #31985a;
+}
