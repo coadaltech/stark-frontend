@@ -24,7 +24,7 @@ type TabbedModalProps = {
 /** Modal whose body is a row of tabs (e.g. an entity's settings split into sections). */
 export function TabbedModal({ open, onOpenChange, title, tabs, defaultTab, className }: TabbedModalProps) {
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title} className={cn("top-[13px] w-[1078px]", className)}>
+    <Modal open={open} onOpenChange={onOpenChange} title={title} className={cn("top-[13px] max-h-[calc(100dvh-26px)] w-[1078px]", className)}>
       <Tabs.Root defaultValue={defaultTab ?? tabs[0]?.value} className="flex min-h-0 flex-1 flex-col px-[15px] pt-4 pb-[30px]">
         <Tabs.List className="flex shrink-0 overflow-x-auto border-b border-[#dee2e6] px-[15px] overflow-hidden">
           {tabs.map((tab) => (

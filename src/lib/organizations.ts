@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Organization, OrganizationDetail } from "@/types/organization";
+import type { Organization, OrganizationConfig, OrganizationDetail } from "@/types/organization";
 
 export type CreateOrganizationInput = {
   OrganizationName: string;
@@ -12,6 +12,7 @@ export type CreateOrganizationInput = {
 /** Any subset of editable fields; each Edit tab sends only its own. */
 export type UpdateOrganizationInput = Partial<
   CreateOrganizationInput &
+    OrganizationConfig &
     Pick<
       OrganizationDetail,
       | "OrganizationAppAccess"
@@ -23,6 +24,14 @@ export type UpdateOrganizationInput = Partial<
       | "OrganizationSmsPort"
       | "OrganizationOnDomain"
       | "OrganizationDomainURL"
+      | "IsAutoSalaryCreate"
+      | "IsAutoSalaryPaid"
+      | "OrganizationStartDate"
+      | "OrganizationEndDate"
+      | "IsOrganizationAllow"
+      | "TelegramAllow"
+      | "TelegramUrl"
+      | "TelegramSession"
     >
 >;
 
