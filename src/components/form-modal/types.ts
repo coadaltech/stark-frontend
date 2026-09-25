@@ -12,6 +12,8 @@ type BaseField = {
   span?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
   /** Force the field onto a new row. */
   startRow?: boolean;
+  /** Make the field required only when this returns true (e.g. depends on a checkbox). */
+  requiredWhen?: (values: FormValues) => boolean;
   /** Extra check run after the required check; return an error message to fail. */
   validate?: (value: string, values: FormValues) => string | undefined;
 };
@@ -28,4 +30,11 @@ export type SelectField = BaseField & {
   options: { label: string; value: string }[];
 };
 
-export type FormField = TextField | SelectField;
+export type CheckboxField = BaseField & {
+  type: "checkbox";
+  /** Stored value when ticked / unticked. Defaults to "1" / "0". */
+  checkedValue?: string;
+  uncheckedValue?: string;
+};
+
+export type FormField = TextField | SelectField | CheckboxField;

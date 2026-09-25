@@ -2,15 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { EntityForm } from "@/components/form-modal/entity-form";
-import type { FormValues } from "@/components/form-modal/types";
-import { getOrganization, updateOrganization } from "@/lib/organizations";
+import type { FormField, FormValues } from "@/components/form-modal/types";
+import { getOrganization, updateOrganization, type UpdateOrganizationInput } from "@/lib/organizations";
+import { cn } from "@/lib/utils";
 import type { OrganizationDetail } from "@/types/organization";
-import { organizationInfoFields } from "./organization-info-fields";
+
+/** Describes one Edit Organization tab: its fields and how they map to/from the API. */
+export type OrganizationTabConfig = {
+  fields: FormField[];
+  toFormValues: (organization: OrganizationDetail) => FormValues;
+  /** Only the fields this tab owns; sent as a partial PATCH. */
+  toUpdate: (values: FormValues) => UpdateOrganizationInput;
+  /** Width of the Save button in grid columns (of 12). */
+  saveSpan?: 3 | 4;
+};
 
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: OrganizationDetail };
 
-/** "Info" tab: loads the organization, then edits its basic details. */
-export function OrganizationInfoTab({ organizationId, onSaved }: { organizationId: number; onSaved: () => void }) {
+type OrganizationSettingsTabProps = {
+  organizationId: number;
+  config: OrganizationTabConfig;
+  onSaved: () => void;
+};
+
+/** Loads the organization, then edits the subset of its settings described by `config`. */
+export function OrganizationSettingsTab({ organizationId, config, onSaved }: OrganizationSettingsTabProps) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
 
@@ -59,43 +75,36 @@ export function OrganizationInfoTab({ organizationId, onSaved }: { organizationI
     );
   }
 
-  const org = state.data;
-
-  async function handleSave(values: FormValues) {
-    await updateOrganization(organizationId, {
-      OrganizationName: values.OrganizationName,
-      OrganizationOwnerName: values.OrganizationOwnerName,
-      OrganizationMobile: values.OrganizationMobile,
-      OrganizationAddress: values.OrganizationAddress,
-      OrganizationTheme: values.OrganizationTheme,
-      OrganizationAppAccess: Number(values.OrganizationAppAccess),
-    });
-  }
+  const saveSpan = config.saveSpan ?? 3;
 
   return (
     <EntityForm
-      fields={organizationInfoFields}
-      initialValues={{
-        OrganizationName: org.OrganizationName,
-        OrganizationOwnerName: org.OrganizationOwnerName,
-        OrganizationMobile: org.OrganizationMobile,
-        OrganizationAddress: org.OrganizationAddress,
-        OrganizationTheme: org.OrganizationTheme,
-        OrganizationAppAccess: String(org.OrganizationAppAccess),
+      fields={config.fields}
+      initialValues={config.toFormValues(state.data)}
+      onSubmit={async (values) => {
+        await updateOrganization(organizationId, config.toUpdate(values));
       }}
-      onSubmit={handleSave}
       onSuccess={onSaved}
       renderActions={({ submitting, error }) => (
         <div className="mt-4 grid grid-cols-12 items-center gap-x-[15px]">
           <button
             type="submit"
             disabled={submitting}
-            className="col-span-12 h-[33px] rounded-[2px] bg-brand-save text-[13px] font-bold text-white hover:bg-brand-save-hover disabled:opacity-60 sm:col-span-3"
+            className={cn(
+              "col-span-12 h-[33px] rounded-[2px] bg-brand-save text-[13px] font-bold text-white hover:bg-brand-save-hover disabled:opacity-60",
+              saveSpan === 4 ? "sm:col-span-4" : "sm:col-span-3",
+            )}
           >
             {submitting ? "Saving…" : "Save"}
           </button>
           {error && (
-            <p role="alert" className="col-span-12 text-[12.5px] font-semibold text-red-600 sm:col-span-9">
+            <p
+              role="alert"
+              className={cn(
+                "col-span-12 text-[12.5px] font-semibold text-red-600",
+                saveSpan === 4 ? "sm:col-span-8" : "sm:col-span-9",
+              )}
+            >
               {error}
             </p>
           )}

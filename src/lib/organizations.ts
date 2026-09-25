@@ -10,7 +10,19 @@ export type CreateOrganizationInput = {
 };
 
 /** Any subset of editable fields; each Edit tab sends only its own. */
-export type UpdateOrganizationInput = Partial<CreateOrganizationInput & { OrganizationAppAccess: number }>;
+export type UpdateOrganizationInput = Partial<
+  CreateOrganizationInput &
+    Pick<
+      OrganizationDetail,
+      | "OrganizationAppAccess"
+      | "OrganizationSms"
+      | "OrganizationSmsUrl"
+      | "OrganizationSmsUsername"
+      | "OrganizationSmsPassword"
+      | "OrganizationSmsSenderId"
+      | "OrganizationSmsPort"
+    >
+>;
 
 export function listOrganizations() {
   return api<Organization[]>("/organizations", { cache: "no-store" });

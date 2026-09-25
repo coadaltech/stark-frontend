@@ -50,7 +50,9 @@ function defaultValues(fields: FormField[], initial?: FormValues): FormValues {
   return Object.fromEntries(
     fields.map((f) => [
       f.name,
-      initial?.[f.name] ?? f.defaultValue ?? (f.type === "select" ? (f.options[0]?.value ?? "") : ""),
+      initial?.[f.name] ??
+        f.defaultValue ??
+        (f.type === "select" ? (f.options[0]?.value ?? "") : f.type === "checkbox" ? (f.uncheckedValue ?? "0") : ""),
     ]),
   );
 }
@@ -59,7 +61,8 @@ function validateAll(fields: FormField[], values: FormValues) {
   const errors: Record<string, string> = {};
   for (const field of fields) {
     const value = values[field.name]?.trim() ?? "";
-    if (field.required && !value) errors[field.name] = `${field.label} is required`;
+    const required = field.required || field.requiredWhen?.(values);
+    if (required && !value) errors[field.name] = `${field.label} is required`;
     else if (value && field.validate) {
       const message = field.validate(value, values);
       if (message) errors[field.name] = message;
@@ -91,7 +94,9 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
     const focusField = (name: string) => form.querySelector<HTMLElement>(`[name="${name}"]`)?.focus();
     setSubmitError(undefined);
 
-    const trimmed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.trim()]));
+    // Passwords are sent exactly as typed; everything else is trimmed.
+    const passwordFields = new Set(fields.filter((f) => f.type === "password").map((f) => f.name));
+    const trimmed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, passwordFields.has(k) ? v : v.trim()]));
     const nextErrors = validateAll(fields, trimmed);
     setErrors(nextErrors);
     const firstInvalid = fields.find((f) => nextErrors[f.name]);
@@ -138,11 +143,28 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
                 field.startRow && "sm:col-start-1",
               )}
             >
-              <label htmlFor={id} className="mb-2 block text-[13px] text-[#333]">
-                {field.label}
-                {field.required && <span className="sr-only"> (required)</span>}
-              </label>
-              {field.type === "select" ? (
+              {field.type !== "checkbox" && (
+                <label htmlFor={id} className="mb-2 block text-[13px] text-[#333]">
+                  {field.label}
+                  {field.required && <span className="sr-only"> (required)</span>}
+                </label>
+              )}
+              {field.type === "checkbox" ? (
+                <label htmlFor={id} className="flex min-h-[31px] items-center gap-[62px] text-[13px] text-[#333]">
+                  <input
+                    id={id}
+                    name={field.name}
+                    type="checkbox"
+                    checked={values[field.name] === (field.checkedValue ?? "1")}
+                    onChange={(e) =>
+                      setValue(field.name, e.target.checked ? (field.checkedValue ?? "1") : (field.uncheckedValue ?? "0"))
+                    }
+                    aria-invalid={!!error || undefined}
+                    className="size-6 shrink-0 cursor-pointer accent-[#1a73e8]"
+                  />
+                  {field.label}
+                </label>
+              ) : field.type === "select" ? (
                 <select
                   id={id}
                   name={field.name}

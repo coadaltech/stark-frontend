@@ -15,4 +15,10 @@ export type Organization = {
 export type OrganizationDetail = Organization & {
   OrganizationTheme: string;
   OrganizationAppAccess: number;
+  OrganizationSms: "0" | "1";
+  OrganizationSmsUrl: string;
+  OrganizationSmsUsername: string;
+  OrganizationSmsPassword: string;
+  OrganizationSmsSenderId: string;
+  OrganizationSmsPort: string;
 };
