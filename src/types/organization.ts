@@ -10,3 +10,9 @@ export type Organization = {
   AddedBy: string;
   AddedDate: string; // ISO timestamp
 };
+
+// Full record returned by GET /organizations/:id (list fields + editable settings).
+export type OrganizationDetail = Organization & {
+  OrganizationTheme: string;
+  OrganizationAppAccess: number;
+};

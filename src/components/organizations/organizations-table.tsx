@@ -174,7 +174,14 @@ export function OrganizationsTable({ organizations, loadError }: { organizations
         fields={organizationFormFields}
         onSubmit={handleCreate}
       />
-      <EditOrganizationModal organization={editing} onClose={() => setEditing(null)} />
+      <EditOrganizationModal
+        organization={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          router.refresh();
+        }}
+      />
     </section>
   );
 }
