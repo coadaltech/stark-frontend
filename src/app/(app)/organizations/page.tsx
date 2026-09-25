@@ -4,7 +4,7 @@ import { OrganizationsTable } from "@/components/organizations/organizations-tab
 import { listOrganizations } from "@/lib/organizations";
 import type { Organization } from "@/types/organization";
 
-export const metadata: Metadata = { title: "Organizations · OrgStark" };
+export const metadata: Metadata = { title: "Organizations · XYZ" };
 
 export default async function OrganizationsPage() {
   // Always render at request time; the list changes as organizations are added.

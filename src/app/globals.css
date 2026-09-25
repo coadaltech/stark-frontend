@@ -128,7 +128,7 @@
     @apply font-sans;
   }
 }
-/* OrgStark brand palette */
+/*  brand palette */
 @theme {
   --color-brand: #11897a;
   --color-brand-nav: #0c6f63;

@@ -7,7 +7,7 @@ export function AppHeader() {
   return (
     <header className="flex h-[58px] shrink-0 items-center justify-between px-[18px] text-white">
       <Link href="/" className="text-[26px] leading-none font-bold tracking-tight">
-        OrgStark
+        XYZ
       </Link>
 
       <div className="flex items-center">
