@@ -44,19 +44,6 @@ function StatusToggle({ organizationId, initiallyActive }: { organizationId: num
 
   return (
     <div className="grid grid-cols-12 gap-x-[15px] gap-y-4">
-      <div className="col-span-12 sm:col-span-4">
-        <label htmlFor="organization-status-remark" className="mb-2 block text-[13px] text-[#333]">
-          Remark
-        </label>
-        <input
-          id="organization-status-remark"
-          type="text"
-          value={remark}
-          maxLength={200}
-          onChange={(e) => setRemark(e.target.value)}
-          className="h-[31px] w-full border border-[#ced4da] bg-white px-2.5 text-[12.5px] font-semibold text-[#333] outline-none focus:border-[#e6c45b] focus:bg-[#fde8a0]"
-        />
-      </div>
       <div className="col-span-12 sm:col-span-4 sm:col-start-1">
         <button
           type="button"
