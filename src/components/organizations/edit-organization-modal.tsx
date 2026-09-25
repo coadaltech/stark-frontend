@@ -44,7 +44,7 @@ export function EditOrganizationModal({ organization, onClose, onSaved }: EditOr
         { value: "sms", label: "Sms", content: settingsTab(organizationSmsTab) },
         { value: "domain", label: "Domain", content: settingsTab(organizationDomainTab) },
         { value: "config", label: "Config", content: settingsTab(organizationConfigTab) },
-        { value: "telegram", label: "Telegram", content: settingsTab(organizationTelegramTab) },
+        // { value: "telegram", label: "Telegram", content: settingsTab(organizationTelegramTab) },
         {
           value: "salary",
           label: "Salary",
