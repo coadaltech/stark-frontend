@@ -21,6 +21,8 @@ export type UpdateOrganizationInput = Partial<
       | "OrganizationSmsPassword"
       | "OrganizationSmsSenderId"
       | "OrganizationSmsPort"
+      | "OrganizationOnDomain"
+      | "OrganizationDomainURL"
     >
 >;
 

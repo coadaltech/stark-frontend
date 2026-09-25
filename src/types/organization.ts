@@ -21,4 +21,6 @@ export type OrganizationDetail = Organization & {
   OrganizationSmsPassword: string;
   OrganizationSmsSenderId: string;
   OrganizationSmsPort: string;
+  OrganizationOnDomain: 0 | 1;
+  OrganizationDomainURL: string;
 };

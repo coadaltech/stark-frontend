@@ -2,6 +2,7 @@
 
 import { TabbedModal } from "@/components/tabbed-modal";
 import type { Organization } from "@/types/organization";
+import { organizationDomainTab } from "./organization-domain-fields";
 import { organizationInfoTab } from "./organization-info-fields";
 import { OrganizationSettingsTab, type OrganizationTabConfig } from "./organization-settings-tab";
 import { organizationSmsTab } from "./organization-sms-fields";
@@ -36,7 +37,7 @@ export function EditOrganizationModal({ organization, onClose, onSaved }: EditOr
           content: settingsTab(organizationInfoTab),
         },
         { value: "sms", label: "Sms", content: settingsTab(organizationSmsTab) },
-        { value: "domain", label: "Domain" },
+        { value: "domain", label: "Domain", content: settingsTab(organizationDomainTab) },
         { value: "config", label: "Config" },
         // { value: "telegram", label: "Telegram" },
         { value: "salary", label: "Salary" },
