@@ -167,3 +167,46 @@ One section per completed layer (newest last).
 (until its next refresh), unless the session is revoked; logout and token reuse end it immediately.
 
 **Not yet**: the organizations API is still open — layer 04 protects it (developer only).
+
+---
+
+## Layer 04 — Protect the organizations API ✅ (2026-09-30)
+
+**What exists now** (`stark-backend`)
+- `src/auth/guard.ts` (revised):
+  - `authenticate(authorization)` — Bearer access token valid **and** its session active, not expired,
+    on the same site → `AuthUser`, else null.
+  - `authGuard` — any signed-in user (401 "Please sign in again.").
+  - `developerGuard` — signed in **and** DEVELOPER (role 1), organization NULL, site `main`;
+    401 when not signed in, 403 "You don't have access to this." for anyone else.
+  - Both run in Elysia's `derive` hook, i.e. **before body/param validation**, so signed-out callers
+    get 401 (not validation details). Each guard does its whole check itself — Elysia "scoped" hooks
+    only reach the module using the guard, so guards must not be stacked.
+- `src/modules/organizations.ts`: `.use(developerGuard)` on all routes (list, get, create, update — all
+  Edit tabs). `AddedBy` / `UpdatedBy` = signed-in username. `POST /organizations` inserts the
+  organization and calls `assign_default_roles(<id>)` in **one transaction**.
+
+**Found and fixed during this layer**
+- A first version stacked `developerGuard` on `authGuard`; the inner hook didn't reach the
+  organizations routes, so even the developer got 401. Replaced with the shared `authenticate()`
+  function used by both guards.
+- With `resolve`, an unauthenticated POST with an invalid body got 422 (validation runs before
+  `resolve`). Switched both guards to `derive` → 401 first. Layer 03's `authGuard` (used by
+  `/auth/me`) changed accordingly; the layer-03 checks were re-run and still pass.
+
+**Verified** (against the running API; test data removed afterwards)
+- No token → 401 for list, get, create (even with an invalid body) and update; malformed token → 401.
+- Developer (main app) → list 200, get 200, create 201, update 200; invalid body → 422.
+- Properly signed tokens with live sessions but the wrong identity → 403: SUPERADMIN on the main app,
+  developer token from an organization site, developer role with an organization. A forbidden update
+  changed nothing.
+- Logout → the organizations API rejects that access token immediately (401).
+- New organization: `AddedBy` = `UpdatedBy` = `developer`; **14 roles**, web login for 1, 2, 7, 11.
+  Update: `UpdatedBy` = `developer`, `AddedBy` unchanged.
+- Layer-03 suite re-run with the revised guard: all checks unchanged.
+
+**Not directly tested**: a failure inside `assign_default_roles` rolling back the new organization
+(guaranteed by the single transaction; not simulated on the live DB).
+
+**Not yet**: the frontend has no sign-in, so the organizations screens can't load data now (the API
+returns 401) — layer 05 adds main-app sign-in.
