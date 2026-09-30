@@ -210,3 +210,79 @@ One section per completed layer (newest last).
 
 **Not yet**: the frontend has no sign-in, so the organizations screens can't load data now (the API
 returns 401) — layer 05 adds main-app sign-in.
+
+## Layer 05 — Main-app sign-in (frontend) ✅ (2026-09-30)
+
+**What exists now** (`stark-frontend`)
+- `src/lib/auth/tokens.ts` — cookie names `stark_access` / `stark_refresh`, `fetchSessionUser`
+  (`GET /auth/me`; `site="main"` only), `needsRefresh` (reads `exp` only, to time refreshes),
+  `refreshTokens` (calls `POST /auth/refresh`), `ApiUnavailableError`,
+  `authCookies` (httpOnly, SameSite=Lax, host-only, `Secure` in production, max-age = token lifetime).
+- `src/lib/auth/session.ts` — `getSession()` (API-confirmed, one call per request), `requireSession()` (→ `/login`),
+  `getAccessToken()`.
+- `src/lib/auth/actions.ts` — server actions `login` (API message shown as-is, username kept after a
+  failed try, safe `next` redirect) and `logout` (ends the session on the API, clears cookies → `/login`).
+- `src/proxy.ts` — valid → continue; missing/expired access token → silent refresh (new cookies on the
+  response and on the current request); no session → `/login?next=<path+query>` and stale cookies
+  cleared; signed-in visitor on `/login` → `/`. Excludes `/api/`, Next internals and static files.
+- `src/app/api/[...path]/route.ts` — forwards browser calls (GET/POST/PATCH/PUT/DELETE) to `API_URL`
+  with `Authorization: Bearer`, refreshing first if needed; 401 "Please sign in again." when the
+  session is gone; `/api/auth/*` → 404; API down → 502.
+- `src/lib/api.ts` — base `/api` in the browser, `API_URL` on the server; optional `token`; a browser
+  401 → `/login?next=<current page>`. `NEXT_PUBLIC_API_URL` is no longer used.
+- `(app)/layout.tsx`, `(app)/page.tsx`, `(app)/organizations/page.tsx` call `requireSession()`;
+  `listOrganizations(token)` forwards the token from the server.
+- `/login` page + `components/auth/login-form.tsx` (card in the app frame);
+  `components/layout/user-menu.tsx` (avatar menu with Logout); `app-header.tsx` shows the real
+  role and username.
+- `.env.example`: `API_URL` only.
+- `src/app/error.tsx` — "Could not load this page…" + Try again, when the API can't be reached.
+
+**Verified** (browser tests with Chrome against the user's dev server + a temporarily started API;
+test sessions deleted afterwards)
+- Signed out: `/` → `/login`; `/organizations?x=1` → `/login?next=%2Forganizations%3Fx%3D1`.
+- Wrong password → "Invalid username or password.", username kept. Right password → back to
+  `/organizations?x=1`; header shows `DEVELOPER` + `developer`; organizations list loads.
+- Cookies: both httpOnly, Lax, host-only; access 15 min, refresh 7 days; `document.cookie` is empty.
+- `/api/organizations` → 200; `/api/auth/me` → 404; PATCH with an invalid value through `/api` → 422
+  with field errors (bodies forwarded, nothing changed); GET detail → 200.
+- Signed in on `/login` → `/`.
+- Access cookie deleted → page loads via silent refresh (new access cookie, refresh token rotated);
+  tampered access cookie → treated as invalid, refreshed, 200; `/api` refresh path → 200.
+- Avatar menu shows `DEVELOPER` / `developer · DEVELOPER` / Logout; Logout → `/login`, both cookies
+  gone, the old refresh token is rejected by the API (401).
+- Cookies cleared while `/organizations` is open, then Action clicked → browser goes to
+  `/login?next=%2Forganizations`.
+- `next=//evil.example` → lands on `/` (no open redirect).
+- `tsc` clean; lint: 0 errors (4 warnings, all pre-existing in organization files).
+
+**Not directly tested in the browser**: Add/Edit organization saves through the UI (the same `/api`
+forwarding was exercised with GET and PATCH); a non-developer trying the main app (rejected by the API
+with the generic message — covered in layers 03/04; there are no staff accounts yet).
+
+**Not yet**: organization sites (host → organization) and their sign-in come in the next layers.
+
+### Layer 05 amendment — no JWT secret in the frontend (2026-09-30)
+
+**Why:** with HS256 the frontend would hold the same secret the API signs with, so a leak of the
+frontend's env could mint valid tokens. Chosen option: the frontend asks the API instead.
+
+**Changed**
+- Removed `src/lib/auth/jwt.ts` and `JWT_ACCESS_SECRET` from `.env.local` / `.env.example`.
+- Pages: `getSession()` → `GET /auth/me` (valid token, active session, active account), one call per
+  request shared by layout and page; only `site = "main"` accepted.
+- `proxy.ts`: refresh timing from the token's `exp` (not trusted); on `/login` it asks the API, so a
+  revoked/forged token can't loop between `/` and `/login`.
+- `/api` route: refreshes near expiry, and once more + one retry if the API answers 401.
+- API unreachable (network error or 5xx) is not "signed out": pages show `src/app/error.tsx`, `/api`
+  returns 502, cookies are kept.
+
+**Verified** (Chrome, dev server + temporarily started API; test sessions deleted)
+- The full layer-05 browser suite again: same results as above.
+- Session revoked through the API while its access token was still unexpired → next page load goes to
+  `/login`, both cookies cleared.
+- Forged access token (future `exp`) + valid refresh cookie → refreshed, page loads (lands on `/`, not
+  the requested page — accepted); `/api` with a forged token → refresh + retry → 200.
+- Forged access token, no refresh cookie → `/login`, cookies cleared, no redirect loop.
+- API stopped → error page, cookies kept, `/api/organizations` → 502.
+- `tsc` clean; lint 0 errors (same 4 pre-existing warnings).

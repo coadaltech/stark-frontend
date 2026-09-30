@@ -9,7 +9,7 @@ ends in a working, tested state. Status: ⬜ not started · 🟨 in progress · 
 | 02 | [Developer seed](02_developer-seed.md) | DB / script | ✅ |
 | 03 | [Backend auth core](03_backend-auth-core.md) | Backend | ✅ |
 | 04 | [Protect the organizations API](04_protect-organizations-api.md) | Backend | ✅ |
-| 05 | [Main-app sign-in (frontend)](05_main-app-sign-in-frontend.md) | Frontend | ⬜ |
+| 05 | [Main-app sign-in (frontend)](05_main-app-sign-in-frontend.md) | Frontend | ✅ |
 | 06 | [Site resolution (backend)](06_site-resolution-backend.md) | Backend | ⬜ |
 | 07 | [Multi-site routing (frontend)](07_multi-site-routing-frontend.md) | Frontend | ⬜ |
 | 08 | [Site-bound sign-in](08_site-bound-sign-in.md) | Backend + Frontend | ⬜ |

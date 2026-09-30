@@ -8,6 +8,8 @@
   role `IsWebLogin = 1`, organization active (`IsOrganizationAllow '1'`). Refresh re-checks.
 - API guard rejects tokens used on another site; organizations API stays main-app-only.
 - Organization-site `/login` page (shows the organization name); proxy/refresh/redirects per site.
+- Frontend session check (`GET /auth/me`) accepts the current site instead of the fixed `"main"`
+  (`fetchSessionUser` in `src/lib/auth/tokens.ts`).
 
 **Depends on:** 03, 05, 07
 **Done when:** developer signs in separately on main and organization sites; cookies don't cross

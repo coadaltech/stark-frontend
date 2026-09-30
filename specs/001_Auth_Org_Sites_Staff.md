@@ -111,6 +111,10 @@ organization has its 14 roles (and `IsWebLogin` flags).
   refreshes, reuse → session revoked, per-session logout, account re-checked on refresh.
 - **httpOnly cookies** set by Next (server action login); `proxy.ts` refreshes silently; every page
   checks the session server-side; browser calls go through the Next `/api/...` route with the token.
+- **The frontend holds no JWT secret.** The Next server asks the API who is signed in
+  (`GET /auth/me`, once per page request, shared by layout and page). `proxy.ts` and the `/api` route
+  only read the token's `exp` (unverified) to decide when to refresh; the API judges every token. If the
+  API can't be reached, pages show an error state and the cookies are kept (not treated as sign-out).
 - **Case-insensitive usernames**; generic "Invalid username or password."; specific messages only
   after a correct password.
 - Header shows the signed-in role + username; avatar menu with name and **Logout**.
@@ -197,7 +201,7 @@ organization's staff (developers have no organization, so they never appear).
 ## 9. Configuration
 - Backend `.env`: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥ 32 chars), `DEVELOPER_USERNAME`,
   `DEVELOPER_PASSWORD`, `MAIN_APP_HOST`.
-- Frontend `.env.local`: `API_URL`, same `JWT_ACCESS_SECRET`, `MAIN_APP_HOST`.
+- Frontend `.env.local`: `API_URL`, `MAIN_APP_HOST` (no JWT secret — see §5).
 
 ## 10. Decisions log
 1. Development sites use `*.localhost` subdomains (not ports).
@@ -217,6 +221,8 @@ organization's staff (developers have no organization, so they never appear).
 14. Auth mechanism (JWT, sessions, cookies, proxy, /api route) as agreed earlier.
 15. Role priority and staff-creatability stored on `sys_role` (`RolePriority`, `IsStaffCreatable`).
 16. Usernames unique per organization; developer usernames reserved platform-wide.
+17. The frontend holds no JWT secret; it confirms sessions with the API (`GET /auth/me`) — chosen over
+    a shared HS256 secret (would let the frontend mint tokens) and public-key signing.
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.
