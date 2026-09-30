@@ -1,7 +1,49 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, authCookies, fetchSessionUser, needsRefresh, REFRESH_COOKIE, refreshTokens, type TokenPair } from "@/lib/auth/tokens";
+import { resolveSite, type Site } from "@/lib/sites";
 
 const LOGIN_PATH = "/login";
+/** Internal routes for organization sites and site errors; only reachable through a rewrite. */
+const SITE_PREFIX = "/site";
+
+/**
+ * Runs before every page and /api call. Decides the site from the Host header (asking the API), then:
+ * - organization host → rewrite to its internal /site/<orgId>/… routes;
+ * - unknown host → "Site not found" (404);
+ * - main host → the main app, with session refresh and sign-in redirects.
+ */
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isApi = pathname === "/api" || pathname.startsWith("/api/");
+
+  let site: Site | null;
+  try {
+    site = await resolveSite(request.headers.get("host"));
+  } catch {
+    return isApi
+      ? NextResponse.json({ message: "Could not reach the server." }, { status: 502 })
+      : rewrite(request, `${SITE_PREFIX}/unavailable`);
+  }
+
+  if (site?.kind === "main") {
+    // Internal site routes don't exist on the main host.
+    if (pathname === SITE_PREFIX || pathname.startsWith(`${SITE_PREFIX}/`)) return rewrite(request, "/_not-found");
+    // The /api route checks the session itself.
+    return isApi ? NextResponse.next() : mainApp(request);
+  }
+
+  // Browser API calls exist only on the main app for now (organization sites get theirs in later layers).
+  if (isApi) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  if (!site) return rewrite(request, `${SITE_PREFIX}/unknown`);
+  return rewrite(request, `${SITE_PREFIX}/${site.organizationId}${pathname === "/" ? "" : pathname}`);
+}
+
+/** Serves `pathname` on this same host (query string kept). */
+function rewrite(request: NextRequest, pathname: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  return NextResponse.rewrite(url);
+}
 
 /** A refreshed pair, null if the session has ended, or "unavailable" if the API can't answer. */
 async function tryRefresh(request: NextRequest): Promise<TokenPair | null | "unavailable"> {
@@ -24,11 +66,11 @@ function signedOut(response: NextResponse) {
 }
 
 /**
- * Runs before every page: keeps the session fresh and sends signed-out visitors to the login page.
- * Pages still confirm the session with the API (requireSession); this only decides when to refresh
- * (from the token's expiry time) and where to send the visitor.
+ * Main app: keeps the session fresh and sends signed-out visitors to the login page. Pages still
+ * confirm the session with the API (requireSession); this only decides when to refresh (from the
+ * token's expiry time) and where to send the visitor.
  */
-export async function proxy(request: NextRequest) {
+async function mainApp(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const access = request.cookies.get(ACCESS_COOKIE)?.value;
 
@@ -59,6 +101,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the /api proxy route (it handles its own auth), Next internals and static files.
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // Everything except Next internals and static files.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
