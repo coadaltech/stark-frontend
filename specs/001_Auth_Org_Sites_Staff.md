@@ -78,12 +78,24 @@ cannot sign in yet. DEVELOPER has no organization (so no role row) and is **alwa
 ### 4.1 `login` (accounts)
 - `OrganizationId` is now **nullable**: `NULL` = platform account (DEVELOPER); otherwise the
   organization the staff member belongs to (one organization → many staff).
+- **Usernames** (`sql/005_login_username_unique.sql`, decided 2026-09-30):
+  - unique **per organization**, ignoring case, among non-deleted logins — index
+    `login_org_username_key` on `(OrganizationId, lower(UserName)) NULLS NOT DISTINCT`, so the same
+    username may exist in different organizations, and developers (NULL) are unique among themselves;
+  - **developer usernames are reserved platform-wide** (trigger `login_reserve_developer_username`):
+    no staff member in any organization may use a developer's username, and a developer can't take
+    an existing staff username — sign-in at an organization site is never ambiguous. Violations raise
+    a unique-violation (constraint name `login_developer_username_reserved`).
+  - Legacy procedures that matched `login."UserName"` to `transaction."AddedBy"` now also match the
+    organization (9 procedures, 15 joins); the others already reached `login` through the
+    organization's ledgers.
 - Staff columns and rules as in the earlier Staff design (§7).
 
 ### 4.2 Existing from earlier work (kept in the DB)
 - 14 roles in `sys_role`; `role` rows for organization 1001; procedure `assign_default_roles(org)`;
-  indexes `role_organization_role_key` (one role per organization) and `login_username_key`
-  (username unique platform-wide, case-insensitive, non-deleted); table `auth_session` (empty).
+  index `role_organization_role_key` (one role **definition** per organization and role type — any
+  number of staff may hold a role); table `auth_session` (empty). The earlier platform-wide
+  `login_username_key` was replaced by the per-organization rule in §4.1.
 - These need SQL files in the repo again (they were removed with the code) so a fresh database gets
   them via `bun run db:sql`.
 
@@ -130,8 +142,11 @@ Refresh re-applies the same rules (e.g. deactivating the organization signs its 
 
 ### 5.4 Developer seed
 `bun run db:seed:developer` reads `DEVELOPER_USERNAME` / `DEVELOPER_PASSWORD` from the backend
-`.env`, creates a DEVELOPER (RoleId 1) with `OrganizationId NULL`, bcrypt password; idempotent
-(an existing account is never changed).
+`.env`, creates a DEVELOPER (RoleId 1) with `OrganizationId NULL`, bcrypt password, fixed
+`LoginName "DEVELOPER"` and `Mobile "0000000000"`, `LedgerId 0`; idempotent (an existing developer
+with that username — any case — is never changed). Refuses: missing values, username with spaces or
+> 30 chars, password outside 8–72 chars or equal to the `.env.example` placeholder, and a username
+already used by staff (reserved-username trigger).
 
 ## 6. API permissions (enforced server-side)
 
@@ -152,7 +167,7 @@ Refresh re-applies the same rules (e.g. deactivating the organization signs its 
 | Staff Name | `LoginName` | required; stored UPPERCASE + `" STAFF A/C"` (typed ≤ 70) |
 | Role | `LoginType` | select limited to roles the signed-in user may create (§3) |
 | W-Mode | `StaffWorkMode` | NONE 0, COMMAN 1, WHATSAPP 2, CALLING 3 |
-| Username | `UserName` | required, ≤ 30, no spaces, unique platform-wide (case-insensitive), stored as typed |
+| Username | `UserName` | required, ≤ 30, no spaces, unique **within the organization** (case-insensitive), not a developer's username, stored as typed |
 | Password | `Password` | required, ≤ 72, bcrypt |
 | Mobile | `Mobile` | exactly 10 digits |
 | Address | `Address` | optional, ≤ 50, UPPERCASE |
@@ -200,6 +215,8 @@ organization's staff (developers have no organization, so they never appear).
 12. Main-app Dashboard stays empty.
 13. Domain matched against the full host, including the port in development.
 14. Auth mechanism (JWT, sessions, cookies, proxy, /api route) as agreed earlier.
+15. Role priority and staff-creatability stored on `sys_role` (`RolePriority`, `IsStaffCreatable`).
+16. Usernames unique per organization; developer usernames reserved platform-wide.
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.
