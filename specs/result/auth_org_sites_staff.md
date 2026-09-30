@@ -323,3 +323,41 @@ frontend's env could mint valid tokens. Chosen option: the frontend asks the API
 site can't be opened; use e.g. `test.localhost:3000` (spec §2).
 
 **Not yet**: the frontend doesn't use resolution yet — layer 07 routes hosts to sites.
+
+## Layer 07 — Multi-site routing (frontend) ✅ (2026-09-30)
+
+**What exists now** (`stark-frontend`)
+- `src/lib/sites.ts` — `resolveSite(host)` (calls `GET /sites/resolve`; 404 → null; network/5xx →
+  `ApiUnavailableError`) and `getSite()` (current request's Host, one call per render).
+- `src/proxy.ts` — runs for every page **and `/api`**; asks the API for the site on every request
+  (no cache), then:
+  - organization host → rewrite to `/site/<orgId><path>` (every path);
+  - unknown host → rewrite to `/site/unknown` (404 "Site not found");
+  - main host → main app as before (refresh / sign-in redirects); `/site/*` → plain 404;
+  - `/api/*` → main host only; other hosts → 404 JSON; API down → 502;
+  - API down for a page → `/site/unavailable` → error page (500).
+- `src/app/site/[orgId]/[[...path]]/page.tsx` — placeholder: organization name + "Sign-in for this
+  site is coming soon." It re-resolves the Host itself and 404s unless it matches `orgId`.
+- `src/app/site/unknown/` — "Site not found" card (404, title "Site not found · XYZ");
+  `src/app/site/unavailable/page.tsx` — throws → `src/app/error.tsx`.
+- `src/components/layout/site-frame.tsx` — `SiteFrame` (teal frame, no nav, optional title) and
+  `MessageCard`; the login page now uses `SiteFrame`.
+- `next.config.ts` — `allowedDevOrigins: ["*.localhost"]` (the dev server restarts itself on change).
+
+**Verified** (your dev server + a temporarily started API; temporary organization `l07.localhost:3000`
+removed afterwards, sequences restored)
+- `l07.localhost:3000` (any case, any path incl. `/login`, `/organizations`, `/site/1001`) → 200
+  placeholder "L07 TEST"; `/api/organizations` there → 404.
+- `test.localhost:3000` (TEST-ORG's current domain) → TEST-ORG placeholder.
+- Domain OFF → "Site not found" (404); back ON → placeholder immediately (no cache).
+- `nobody.localhost:3000` (any path) → 404 "Site not found"; `/api` there → 404.
+- Main host: `/` → `/login`; `/login` → sign-in page; `/site/1002`, `/site/unknown` → plain 404;
+  `/api/organizations` signed out → 401. Full layer-05 browser suite re-run: unchanged.
+- Chrome on `l07.localhost:3000`: no failed dev-asset requests or console errors.
+- API stopped: organization, unknown and main hosts → error page with "Try again"; `/api` → 502.
+- `tsc` clean (after `next typegen`); lint 0 errors.
+
+**Note:** the tab title for "Site not found" is streamed by Next after the first HTML, so `curl`
+shows "XYZ" while browsers show "Site not found · XYZ".
+
+**Not yet**: organization-site sign-in and site-bound tokens (layer 08).

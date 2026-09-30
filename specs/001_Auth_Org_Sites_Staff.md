@@ -142,8 +142,9 @@ Refresh re-applies the same rules (e.g. deactivating the organization signs its 
   deleted.
 - Otherwise → "Site not found" (404). The organization's active flag doesn't affect resolution.
 - The Next server has no DB access: `proxy.ts` asks the API (`GET /sites/resolve?host=…`, public,
-  returning `{ kind: "main" }`, `{ kind: "organization", organizationId, name }` or 404) and caches
-  answers briefly.
+  returning `{ kind: "main" }`, `{ kind: "organization", organizationId, name }` or 404) on every
+  request — **no cache**, so domain changes apply immediately. The frontend has no `MAIN_APP_HOST` of
+  its own; the API decides which host is the main app.
 - **Domain URL format** (Domain tab + API): host name with an optional port — `lgaikhai.com`,
   `acme.localhost:3000`; no scheme, path, spaces or trailing dot; stored lower-case; unique among
   organizations; the main app host is rejected ("This domain is reserved for the main app").
@@ -195,7 +196,10 @@ organization's staff (developers have no organization, so they never appear).
   - organization host → **rewrites** to internal organization routes (e.g. `/` → `/site/<orgId>`,
     `/staff` → `/site/<orgId>/staff`, `/login` → `/site/<orgId>/login`); those internal paths are not
     reachable directly from the main host (404);
-  - unknown host → "Site not found".
+  - unknown host → "Site not found" (404);
+  - internal routes: `/site/<orgId>/…` (organization pages), `/site/unknown` ("Site not found"),
+    `/site/unavailable` (API unreachable → error page); `/site/*` on the main host → plain 404;
+  - `/api/*` only on the main host for now (organization sites get browser API calls with staff, 09).
 - Session refresh and redirects to the site's own `/login?next=…` as before.
 - **Main app:** Dashboard (empty) + Organizations ▾ → Organization (developer only).
 - **Organization site:** Organization-Info (home) + Staff ▾ → Staff (Staff menu only for DEVELOPER,
@@ -205,7 +209,7 @@ organization's staff (developers have no organization, so they never appear).
 ## 9. Configuration
 - Backend `.env`: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥ 32 chars), `DEVELOPER_USERNAME`,
   `DEVELOPER_PASSWORD`, `MAIN_APP_HOST`.
-- Frontend `.env.local`: `API_URL`, `MAIN_APP_HOST` (no JWT secret — see §5).
+- Frontend `.env.local`: `API_URL` only (no JWT secret — §5; no main host — §5.3).
 
 ## 10. Decisions log
 1. Development sites use `*.localhost` subdomains (not ports).
@@ -228,6 +232,7 @@ organization's staff (developers have no organization, so they never appear).
 17. The frontend holds no JWT secret; it confirms sessions with the API (`GET /auth/me`) — chosen over
     a shared HS256 secret (would let the frontend mint tokens) and public-key signing.
 18. Domain URL validated as `host[:port]`; the main app host can't be an organization domain.
+19. Host lookups aren't cached; the frontend has no `MAIN_APP_HOST` (the API decides).
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.
