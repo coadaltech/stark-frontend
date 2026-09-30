@@ -125,7 +125,7 @@ organization has its 14 roles (and `IsWebLogin` flags).
 ### 5.2 Sign-in rules per site
 | Site | Allowed |
 |---|---|
-| Main app | DEVELOPER only; anyone else → "This account can't sign in here." |
+| Main app | DEVELOPER only (organization NULL, role 1); anyone else → the generic "Invalid username or password." (401). An inactive developer (correct password) → "Your account is inactive…" (403). |
 | Organization site | DEVELOPER; or `login.OrganizationId` = that organization, account active (`AccountStatus '1'`, not deleted), role `IsWebLogin = 1`, **and** organization active (`IsOrganizationAllow '1'`). Staff of another organization are rejected. |
 
 Refresh re-applies the same rules (e.g. deactivating the organization signs its staff out within

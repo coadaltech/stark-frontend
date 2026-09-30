@@ -114,3 +114,56 @@ One section per completed layer (newest last).
 - Live: first run created LoginId 1; second run changed nothing.
 
 **Not yet**: nobody can sign in — layer 03 adds the auth API.
+
+---
+
+## Layer 03 — Backend auth core ✅ (2026-09-30)
+
+**What exists now** (`stark-backend`)
+- `src/auth/jwt.ts` — hand-written HS256 JWT sign/verify on Web Crypto (header pinned to
+  `HS256`/`JWT`, constant-time signature check, issuer `stark`, expiry with 5 s skew); SHA-256 helper.
+- `src/auth/tokens.ts` — access token **15 min**, refresh token **7 days** (sliding), separate
+  secrets; claims `typ, sub (LoginId), sid (session), site, org, usr, name, role, roleName, iat, exp,
+  iss`; `site = "main"` for the main app (`MAIN_SITE`), `org = null` for developers.
+- `src/auth/guard.ts` — `authGuard` Elysia plugin: `Authorization: Bearer` + session active, not
+  expired and on the same site → typed `user`; otherwise 401 "Please sign in again." (applied to the
+  organizations API in layer 04).
+- `src/modules/auth.ts`, registered in `src/index.ts`:
+  | Endpoint | Behaviour |
+  |---|---|
+  | `POST /auth/login` | main app: looks up **developers only** (organization NULL, role 1, not deleted), username any case; wrong password / unknown user / non-developer → generic 401; inactive developer → 403; creates an `auth_session` (site "main") |
+  | `POST /auth/refresh` | rotates the refresh token; previous token accepted for 30 s; older token → session revoked (`reuse`); re-checks the account (`account` / `inactive` → revoked); sliding 7-day expiry; keeps the site |
+  | `POST /auth/logout` | revokes the session (`logout`); always 204 |
+  | `GET /auth/me` | guarded; fresh user from the DB |
+- `src/db/legacy.ts` — Drizzle definitions for `login`, `sys_role`, `role`, `auth_session`.
+- `src/env.ts` — `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` required, ≥ 32 chars (existing values
+  kept: 64 chars each, different).
+- `sql/006_auth_session.sql` — added `auth_session."Site"` (varchar 255, NOT NULL, default `main`).
+
+**Decisions made in this layer**
+- Existing JWT secrets kept.
+- Tokens/sessions carry the site from the start (`main`), so layer 08 doesn't change the format.
+- Non-developer with the correct password → generic credentials error (nothing revealed).
+- No automated tests in the repo; verification scripted outside it.
+
+**Verified** (against the running API; temporary accounts removed afterwards)
+- Health public; empty login body → 422.
+- Wrong password, unknown user and a SUPERADMIN (correct password) → identical 401 message; timing
+  identical (51 ms / 51 ms).
+- Inactive developer → 403 "Your account is inactive…".
+- Developer login (upper-case username) → 200; access 900 s, refresh 7 days; site "main", org null;
+  session row has Site "main".
+- `/auth/me`: with token → user; no token / tampered / `alg: none` / expired / refresh token as
+  access → 401.
+- Refresh rotates; previous token within grace → 200; a token two rotations old → 401 and the session
+  is revoked (newest refresh and access tokens → 401).
+- Logout → 204; afterwards `/auth/me` and refresh → 401 immediately; garbage token → 204.
+- Developer deactivated mid-session → refresh 403 and session revoked (`inactive`).
+- Startup without the secrets → refused ("Missing required env var: JWT_ACCESS_SECRET"); a short
+  secret → refused ("must be at least 32 characters"). `.env.example` now lists both secrets (empty,
+  with how to generate them).
+
+**Known behaviour**: an access token stays valid for up to 15 min after an account is deactivated
+(until its next refresh), unless the session is revoked; logout and token reuse end it immediately.
+
+**Not yet**: the organizations API is still open — layer 04 protects it (developer only).
