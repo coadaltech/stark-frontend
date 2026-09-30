@@ -286,3 +286,40 @@ frontend's env could mint valid tokens. Chosen option: the frontend asks the API
 - Forged access token, no refresh cookie → `/login`, cookies cleared, no redirect loop.
 - API stopped → error page, cookies kept, `/api/organizations` → 502.
 - `tsc` clean; lint 0 errors (same 4 pre-existing warnings).
+
+## Layer 06 — Site resolution (backend) ✅ (2026-09-30)
+
+**What exists now** (`stark-backend`)
+- `src/sites/host.ts` — `isValidHost` (`host[:port]`, lower case, port 1–65535) and `normalizeHost`
+  (trim + lower-case).
+- `src/env.ts` — `MAIN_APP_HOST` (default `localhost:3000`, normalized; invalid value → startup
+  refused). Outdated comment about the frontend needing the JWT secret corrected.
+- `src/modules/sites.ts` — `GET /sites/resolve?host=…` (public): main host → `{ kind: "main" }`;
+  organization with `lower(OrganizationDomainURL) = host`, Domain ON, not deleted →
+  `{ kind: "organization", organizationId, name }`; anything else (incl. malformed hosts) → 404
+  "Site not found"; missing `host` → 422. Registered in `src/index.ts`.
+- `src/modules/organizations.ts` — Domain save validation re-enabled: `host[:port]` format and
+  "This domain is reserved for the main app" (plus the existing required-when-ON and unique checks).
+- `.env.example` — `MAIN_APP_HOST=localhost:3000` (the real `.env` wasn't touched; the default applies).
+
+**`stark-frontend`**: Domain tab validation re-enabled with the same rule; placeholder
+"example.com or acme.localhost:3000".
+
+**Verified** (running API, temporary organization removed afterwards, sequences restored)
+- Saving the domain: `http://…`, a path, spaces, port 0 / 70000, trailing dot → 422 format message;
+  `LOCALHOST:3000` → "reserved for the main app"; `localhost:5000` → "Domain already used by
+  TEST-ORG"; empty while ON → required. `lgaikhai-l06.com` and ` Acme-L06.LocalHost:3000 ` → saved as
+  `acme-l06.localhost:3000`.
+- Resolve: `localhost:3000` / `LocalHost:3000` → main; `localhost:5000` → TEST-ORG (1001);
+  test organization → organization while Domain ON (any case), 404 while Domain OFF or deleted;
+  other port, no port, unknown host, malformed host → 404; no `host` → 422; no token needed.
+- `MAIN_APP_HOST=App.LocalHost:3000` → that host is main, `localhost:3000` → 404;
+  `MAIN_APP_HOST=http://localhost:3000` → API refuses to start.
+- Backend and frontend `tsc` clean; frontend lint 0 errors.
+
+**Not browser-tested**: the Domain tab's client-side message (same rule as the API, which was tested).
+
+**Note:** TEST-ORG's domain `localhost:5000` resolves, but the app only runs on port 3000, so that
+site can't be opened; use e.g. `test.localhost:3000` (spec §2).
+
+**Not yet**: the frontend doesn't use resolution yet — layer 07 routes hosts to sites.

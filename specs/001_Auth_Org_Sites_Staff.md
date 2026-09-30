@@ -140,9 +140,13 @@ Refresh re-applies the same rules (e.g. deactivating the organization signs its 
 - An organization site matches when `lower(Host)` equals the organization's `OrganizationDomainURL`
   **including the port in development**, `OrganizationOnDomain = 1`, and the organization isn't
   deleted.
-- Otherwise → "Site not found" (404).
-- The Next server has no DB access: `proxy.ts` asks the API (small public endpoint returning
-  `{ kind: "main" | "organization", organizationId, name }` or 404) and caches answers briefly.
+- Otherwise → "Site not found" (404). The organization's active flag doesn't affect resolution.
+- The Next server has no DB access: `proxy.ts` asks the API (`GET /sites/resolve?host=…`, public,
+  returning `{ kind: "main" }`, `{ kind: "organization", organizationId, name }` or 404) and caches
+  answers briefly.
+- **Domain URL format** (Domain tab + API): host name with an optional port — `lgaikhai.com`,
+  `acme.localhost:3000`; no scheme, path, spaces or trailing dot; stored lower-case; unique among
+  organizations; the main app host is rejected ("This domain is reserved for the main app").
 
 ### 5.4 Developer seed
 `bun run db:seed:developer` reads `DEVELOPER_USERNAME` / `DEVELOPER_PASSWORD` from the backend
@@ -223,6 +227,7 @@ organization's staff (developers have no organization, so they never appear).
 16. Usernames unique per organization; developer usernames reserved platform-wide.
 17. The frontend holds no JWT secret; it confirms sessions with the API (`GET /auth/me`) — chosen over
     a shared HS256 secret (would let the frontend mint tokens) and public-key signing.
+18. Domain URL validated as `host[:port]`; the main app host can't be an organization domain.
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.
