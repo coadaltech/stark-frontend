@@ -18,7 +18,6 @@ export function OrganizationStatusTab({ organizationId }: { organizationId: numb
 
 function StatusToggle({ organizationId, initiallyActive }: { organizationId: number; initiallyActive: boolean }) {
   const [active, setActive] = useState(initiallyActive);
-  const [remark, setRemark] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function toggle() {

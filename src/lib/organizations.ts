@@ -35,8 +35,9 @@ export type UpdateOrganizationInput = Partial<
     >
 >;
 
-export function listOrganizations() {
-  return api<Organization[]>("/organizations", { cache: "no-store" });
+/** Server only: `token` is the signed-in user's access token. */
+export function listOrganizations(token: string | undefined) {
+  return api<Organization[]>("/organizations", { cache: "no-store", token });
 }
 
 export function getOrganization(id: number) {

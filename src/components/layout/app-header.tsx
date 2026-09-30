@@ -1,9 +1,8 @@
 import Link from "next/link";
+import { UserMenu } from "@/components/layout/user-menu";
+import type { SessionUser } from "@/lib/auth/tokens";
 
-// Static until auth is wired up.
-const currentUser = { name: "DYNAMIC_SUPPORT", role: "DEVELOPER", initial: "D" };
-
-export function AppHeader() {
+export function AppHeader({ user }: { user: SessionUser }) {
   return (
     <header className="flex h-[58px] shrink-0 items-center justify-between px-[18px] text-white">
       <Link href="/" className="text-[26px] leading-none font-bold tracking-tight">
@@ -15,15 +14,12 @@ export function AppHeader() {
           [ ]
         </span>
         <span className="ml-2 rounded-full border border-white/25 bg-brand-pill px-5 py-[3px] text-xs font-bold tracking-wide">
-          {currentUser.role}
+          {user.roleName}
         </span>
-        <span className="ml-6 max-w-[82px] truncate text-[13px]" title={currentUser.name}>
-          {currentUser.name}
+        <span className="ml-6 max-w-[82px] truncate text-[13px]" title={user.userName}>
+          {user.userName}
         </span>
-        <span className="relative ml-4 grid size-9 place-items-center rounded-full bg-white text-sm font-bold text-brand">
-          {currentUser.initial}
-          <span className="absolute -top-0.5 right-0 size-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-        </span>
+        <UserMenu name={user.name} userName={user.userName} roleName={user.roleName} />
       </div>
     </header>
   );
