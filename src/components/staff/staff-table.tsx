@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormModal } from "@/components/form-modal/form-modal";
 import type { FormValues } from "@/components/form-modal/types";
+import { EditStaffModal } from "./edit-staff-modal";
 import { staffFormFields } from "./staff-form-fields";
 import { formatDateTime } from "@/lib/format";
 import { createStaff } from "@/lib/staff";
@@ -49,9 +50,12 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<Staff | null>(null);
 
-  // F2 opens the Add modal, matching the button hint.
+  // F2 opens the Add modal, matching the button hint (not while editing).
+  const isEditing = editing !== null;
   useEffect(() => {
+    if (isEditing) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "F2") {
         event.preventDefault();
@@ -60,7 +64,7 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isEditing]);
 
   async function handleCreate(values: FormValues) {
     await createStaff({
@@ -140,13 +144,11 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
                   <td>{s.UpdatedBy}</td>
                   <td>{formatDateTime(s.UpdatedDate)}</td>
                   <td>
-                    {/* Shown as in the legacy screen; staff actions aren't part of this build. */}
                     <button
                       type="button"
-                      aria-disabled="true"
-                      title="Not available yet"
+                      onClick={() => setEditing(s)}
                       aria-label={`Action: ${s.UserName}`}
-                      className="cursor-default rounded-[2px] bg-brand-action px-2.5 py-[3px] text-[10.5px] text-white"
+                      className="rounded-[2px] bg-brand-action px-2.5 py-[3px] text-[10.5px] text-white hover:bg-brand-nav-active"
                     >
                       Action
                     </button>
@@ -166,6 +168,16 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
       </div>
 
       <FormModal open={addOpen} onOpenChange={setAddOpen} title="Staff" fields={staffFormFields(roles)} onSubmit={handleCreate} />
+      <EditStaffModal
+        staff={editing}
+        roles={roles}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          router.refresh();
+        }}
+        onChanged={() => router.refresh()}
+      />
     </section>
   );
 }
