@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ACCESS_COOKIE, API_URL, authCookies, REFRESH_COOKIE, type TokenPair } from "./tokens";
 
@@ -22,7 +22,8 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ UserName: userName, Password: password }),
+      // The API decides the site (main app or an organization) from the address signed in at.
+      body: JSON.stringify({ UserName: userName, Password: password, Host: (await headers()).get("host") ?? "" }),
       cache: "no-store",
     });
     if (!res.ok) {

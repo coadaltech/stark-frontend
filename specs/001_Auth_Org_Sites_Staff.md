@@ -108,7 +108,9 @@ organization has its 14 roles (and `IsWebLogin` flags).
 - **Hand-written HS256 JWTs** on Web Crypto; bcrypt via `Bun.password`; no third-party auth/JWT libs.
 - **Access token 15 min**, **refresh token 7 days** (sliding), separate secrets.
 - **`auth_session`** table: hashed refresh tokens, rotation on every refresh, 30 s grace for parallel
-  refreshes, reuse → session revoked, per-session logout, account re-checked on refresh.
+  refreshes (a refresh racing the latest rotation gets the **same current refresh token back** — rebuilt
+  from the stored `Rotation` + `ExpiresAt` — instead of rotating again), reuse outside the grace →
+  session revoked, per-session logout, account re-checked on refresh.
 - **httpOnly cookies** set by Next (server action login); `proxy.ts` refreshes silently; every page
   checks the session server-side; browser calls go through the Next `/api/...` route with the token.
 - **The frontend holds no JWT secret.** The Next server asks the API who is signed in
@@ -122,9 +124,15 @@ organization has its 14 roles (and `IsWebLogin` flags).
 ### 5.1 New: sessions belong to a site
 - One session per site: signing in at `acme.localhost` does not sign you in at `beta.localhost` or the
   main app (host-only cookies, no `Domain` attribute).
-- Access and refresh tokens carry the **site** they were issued for (`site` = host, and `org` = the
-  site's organization id, or none for the main app). The API rejects a token used for another site,
-  and refresh keeps the same site.
+- Tokens and sessions carry the **site** they were issued for: `site` = `"main"` or the organization
+  site's host (lower-case), plus `sorg` / `auth_session.SiteOrganizationId` = the site's organization
+  (null on the main app). `org` stays the **account's** organization (null for developers).
+- Login and refresh send the **Host** they come from; the API resolves it. A refresh token presented
+  at another site is refused (401) **without touching its session**. The frontend accepts a session
+  only when it is for the current site.
+- On every refresh and `/auth/me` the session's host must still resolve to the same organization
+  (Domain ON, not deleted); otherwise the session ends (revoked `site`). Moving a domain to another
+  organization therefore ends the old sessions.
 
 ### 5.2 Sign-in rules per site
 | Site | Allowed |
@@ -134,6 +142,12 @@ organization has its 14 roles (and `IsWebLogin` flags).
 
 Refresh re-applies the same rules (e.g. deactivating the organization signs its staff out within
 15 minutes; the developer is unaffected).
+
+Messages on an organization site: wrong password, unknown username or another organization's staff →
+"Invalid username or password." (401). After a correct password: inactive account → "Your account is
+inactive. Please contact your administrator."; organization deactivated → "This organization is
+inactive. Please contact your administrator."; role without web login → "Your role can't sign in on the
+web." (all 403). Unknown host → "Site not found" (404).
 
 ### 5.3 Site resolution
 - `MAIN_APP_HOST` (env, e.g. `localhost:3000`) is the main app.
@@ -233,6 +247,8 @@ organization's staff (developers have no organization, so they never appear).
     a shared HS256 secret (would let the frontend mint tokens) and public-key signing.
 18. Domain URL validated as `host[:port]`; the main app host can't be an organization domain.
 19. Host lookups aren't cached; the frontend has no `MAIN_APP_HOST` (the API decides).
+20. Organization-site sign-in: specific 403 messages (after a correct password) for inactive
+    organization and non-web role.
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.

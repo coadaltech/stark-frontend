@@ -1,25 +1,35 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { MessageCard, SiteFrame } from "@/components/layout/site-frame";
-import { getSite } from "@/lib/sites";
+import { AppFooter } from "@/components/layout/app-footer";
+import { AppHeader } from "@/components/layout/app-header";
+import { MessageCard } from "@/components/layout/site-frame";
+import { requireSession } from "@/lib/auth/session";
+import { requireOrganizationSite } from "@/lib/org-site";
 
 // Organization sites are reached only through proxy.ts, which rewrites an organization host's paths
-// to /site/<orgId>/…. Placeholder until organization-site sign-in (layer 08).
+// to /site/<orgId>/…. Signed-in placeholder until the organization shell (layer 09).
 
-export async function generateMetadata(): Promise<Metadata> {
-  const site = await getSite();
-  return { title: site?.kind === "organization" ? `${site.name} · XYZ` : "XYZ" };
+export async function generateMetadata({ params }: PageProps<"/site/[orgId]/[[...path]]">): Promise<Metadata> {
+  const site = await requireOrganizationSite((await params).orgId);
+  return { title: `${site.name} · XYZ` };
 }
 
 export default async function OrganizationSitePlaceholder({ params }: PageProps<"/site/[orgId]/[[...path]]">) {
-  const { orgId } = await params;
-  // The host must still belong to this organization (never trust the path alone).
-  const site = await getSite();
-  if (site?.kind !== "organization" || String(site.organizationId) !== orgId) notFound();
+  const site = await requireOrganizationSite((await params).orgId);
+  const user = await requireSession();
 
   return (
-    <SiteFrame title={site.name}>
-      <MessageCard heading={site.name}>Sign-in for this site is coming soon.</MessageCard>
-    </SiteFrame>
+    <div className="flex h-dvh flex-col bg-brand">
+      <AppHeader user={user} />
+      <div className="mx-[18px] flex min-h-0 flex-1 flex-col">
+        <main className="flex min-h-0 flex-1 items-center justify-center bg-brand-page p-[15px]">
+          <MessageCard heading={site.name}>
+            Signed in as {user.userName} ({user.roleName}). The organization pages come next.
+          </MessageCard>
+        </main>
+      </div>
+      <div className="mx-[18px] mb-1.5">
+        <AppFooter />
+      </div>
+    </div>
   );
 }

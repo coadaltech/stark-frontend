@@ -14,3 +14,19 @@
 **Depends on:** 03, 05, 07
 **Done when:** developer signs in separately on main and organization sites; cookies don't cross
 sites; a token from one site is rejected on another; deactivating the organization blocks staff sign-in.
+
+**Decisions (answered before building)**
+- After a correct password: organization deactivated → "This organization is inactive. Please contact
+  your administrator." (403); role with `IsWebLogin = 0` → "Your role can't sign in on the web." (403).
+  Wrong password / other organization's staff stay generic (401).
+
+**Decided while building**
+- Session site = host + organization id (`auth_session.SiteOrganizationId`, token `sorg`); `org` stays
+  the account's organization. Login **and refresh** take `Host`.
+- Signed-in organization page is a placeholder (header with Logout + "Signed in as …") until layer 09.
+- **Refresh race fix** (affects all sites, found while testing): parallel refreshes in the grace window
+  now receive the same current refresh token (rebuilt from `auth_session.Rotation` + `ExpiresAt`,
+  token claim `rot` replaces the random `jti`) instead of rotating again — previously a third parallel
+  refresh (page + prefetches after the access token expired) was treated as token theft and signed the
+  user out.
+- The proxy doesn't touch cookies on the sign-in form submission (server action POST to `/login`).

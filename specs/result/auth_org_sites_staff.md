@@ -361,3 +361,69 @@ removed afterwards, sequences restored)
 shows "XYZ" while browsers show "Site not found · XYZ".
 
 **Not yet**: organization-site sign-in and site-bound tokens (layer 08).
+
+## Layer 08 — Site-bound sign-in ✅ (2026-09-30)
+
+**What exists now**
+
+`stark-backend`
+- `sql/006_auth_session.sql` (applied to the live DB, only this file): new columns
+  `SiteOrganizationId bigint` (NULL = main app) and `Rotation integer NOT NULL DEFAULT 0`.
+- `src/sites/resolve.ts` — `resolveHost(host)` shared by `/sites/resolve` and auth.
+- `src/auth/tokens.ts` — `AuthUser.siteOrganizationId` (claim `sorg`); refresh tokens carry `rot`
+  (rotation number) instead of a random `jti` and can be rebuilt identically; `signJwt` takes an
+  optional issue time.
+- `src/auth/guard.ts` — the session must also match the token's site organization.
+- `src/modules/auth.ts`
+  - `POST /auth/login` takes `Host` → main app (developers only) or organization site (developers +
+    that organization's accounts); unknown host → 404 "Site not found".
+  - Per-account rules after a correct password: inactive account / organization inactive / role
+    without web login → 403 with the agreed messages (developers skip the organization/role checks).
+  - `POST /auth/refresh` takes `Host`: token from another site → 401 without touching the session;
+    session's own site gone (Domain OFF, deleted, domain moved) → revoked `site`; rules re-checked
+    (revoked `organization` / `role` / `inactive` with the 403 message); parallel refreshes in the
+    grace window get the same current refresh token back.
+  - `GET /auth/me` re-checks site + rules; response includes `siteOrganizationId`.
+
+`stark-frontend`
+- `src/lib/sites.ts` — `getHost()`, `sessionIsForSite(user, site, host)`.
+- `src/lib/auth/session.ts` — `getSession()` accepts only a session for the current site.
+- `src/lib/auth/actions.ts` — login sends `Host`; `refreshTokens(token, host)` sends `Host`.
+- `src/proxy.ts` — the same refresh / sign-in redirect logic on every site (`sitePages`), then
+  `next()` on the main host or a rewrite to `/site/<orgId>/…`; leaves cookies alone on the sign-in
+  form POST; refreshed pairs for another site are discarded.
+- `src/lib/org-site.ts` — `requireOrganizationSite(orgId)` (host must still resolve to that org).
+- `src/app/site/[orgId]/login/page.tsx` — sign-in card with the organization's name;
+  `src/app/site/[orgId]/[[...path]]/page.tsx` — signed-in placeholder (header, user menu with
+  Logout, "Signed in as … (ROLE)").
+- `src/app/api/[...path]/route.ts` — refreshes at the request's Host.
+
+**Verified** (running API + your dev server; temporary organizations `l08a.localhost:3000` /
+`l08b.localhost:3000`, their staff and all test sessions removed; sequences restored)
+- API sign-in: developer on main and on both organization sites (any host case); staff only on
+  their own site; MANAGER → role message; inactive → inactive message; other organization's staff,
+  wrong password → generic 401; same username in both organizations → the right account per site;
+  unknown host → 404; missing Host → 422.
+- Organizations API: developer token from an organization site → 403; main developer → 200.
+- Organization deactivated → staff login/refresh 403 (session revoked `organization`), `/auth/me` 401;
+  developer still signs in and refreshes.
+- Domain OFF → sessions end (`/auth/me` 401, refresh 401 revoked `site`), login 404. Domain moved to
+  organization B → A's old sessions end.
+- Refresh: 5 parallel refreshes → all 200, one refresh token, rotation 1, not revoked; replaying the
+  original after a further rotation → revoked `reuse`; previous token after the grace → `reuse`; token
+  presented at B or main → 401 with the session untouched, still works at A.
+- Browser (Chrome): `l08a…/reports?x=1` → org login (org name, title "Sign in · L08 ALPHA") → staff
+  errors shown → sign-in lands back on `/reports?x=1` with header SUPERADMIN / a_super; cookies are
+  host-only per site; main and B stay signed out; A's cookies copied to B → not accepted, cleared, no
+  redirect loop; developer on B incl. silent refresh; logout on A leaves B signed in; main app sign-in
+  unchanged; no console errors.
+- Main-app suites (layer 05 + amendment) re-run: unchanged.
+- Backend and frontend `tsc` clean; lint 0 errors.
+
+**Found and fixed during this layer**
+- Parallel refreshes could sign users out (see decisions in the layer file) — present since layer 03.
+- A copied refresh token could rotate another site's session — refresh now takes Host.
+- Your dev server kept a stale compiled `/api` route (old refresh call) until the file changed; if
+  anything odd shows after pulling these changes, restart `next dev`.
+
+**Not yet**: organization shell, Organization-Info and the Staff menu (layer 09).

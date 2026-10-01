@@ -3,7 +3,7 @@
 
 export const ACCESS_COOKIE = "stark_access";
 export const REFRESH_COOKIE = "stark_refresh";
-/** The main app's site id in tokens (organization sites come in layer 08). */
+/** The main app's site id in tokens; organization sites use their host. */
 export const MAIN_SITE = "main";
 
 /** Backend base URL — used from the Next server only. */
@@ -23,8 +23,12 @@ export type SessionUser = {
   name: string;
   roleId: number;
   roleName: string;
+  /** The account's organization — null for developers. */
   organizationId: number | null;
+  /** "main" or the organization site's host. */
   site: string;
+  /** The organization whose site this session is for — null on the main app. */
+  siteOrganizationId: number | null;
 };
 
 export type TokenPair = {
@@ -66,8 +70,9 @@ async function post(path: string, body: unknown) {
 }
 
 /**
- * The user the API accepts `token` for (valid token, session active, account still active), or null.
- * Only main-app sessions count here. Throws ApiUnavailableError if the API can't answer.
+ * The user the API accepts `token` for (valid token, session active, site still there, account still
+ * allowed on it), or null. Callers must also check the session is for the current site
+ * (`sessionIsForSite`). Throws ApiUnavailableError if the API can't answer.
  */
 export async function fetchSessionUser(token: string | undefined): Promise<SessionUser | null> {
   if (!token) return null;
@@ -79,17 +84,17 @@ export async function fetchSessionUser(token: string | undefined): Promise<Sessi
   }
   if (res.status >= 500) throw new ApiUnavailableError();
   if (!res.ok) return null;
-  const user = (await res.json()) as SessionUser;
-  return user.site === MAIN_SITE ? user : null;
+  return (await res.json()) as SessionUser;
 }
 
 /**
- * Exchanges a refresh token for a new pair (the API rotates it); null if the session has ended.
- * Throws ApiUnavailableError if the API can't answer (keep the cookies then).
+ * Exchanges a refresh token for a new pair at the site of `host` (the API rotates it, and refuses a
+ * token from another site); null if the session has ended. Throws ApiUnavailableError if the API
+ * can't answer (keep the cookies then).
  */
-export async function refreshTokens(refreshToken: string | undefined): Promise<TokenPair | null> {
-  if (!refreshToken) return null;
-  const res = await post("/auth/refresh", { refreshToken });
+export async function refreshTokens(refreshToken: string | undefined, host: string | null): Promise<TokenPair | null> {
+  if (!refreshToken || !host) return null;
+  const res = await post("/auth/refresh", { refreshToken, Host: host });
   if (res.status >= 500) throw new ApiUnavailableError();
   return res.ok ? ((await res.json()) as TokenPair) : null;
 }
