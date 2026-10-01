@@ -427,3 +427,48 @@ shows "XYZ" while browsers show "Site not found · XYZ".
   anything odd shows after pulling these changes, restart `next dev`.
 
 **Not yet**: organization shell, Organization-Info and the Staff menu (layer 09).
+
+## Layer 09 — Organization site shell & Organization-Info ✅ (2026-10-01)
+
+**What exists now**
+
+`stark-backend`
+- `src/auth/access.ts` — site/account rules shared by sign-in and guards (moved out of
+  `modules/auth.ts`, unchanged behaviour): `siteOfHost`, `siteStillValid`, `selectAccount`,
+  `accountsOfSite`, `denial`, messages.
+- `src/auth/guard.ts` — `organizationSiteGuard`: session + site still valid + account still allowed,
+  on every call; gives handlers `user` and `organizationId` (the site's organization). Main-app
+  token → 403.
+- `src/modules/organization-site.ts` — `GET /site/organization-info` → `{ organizationId, name,
+  totalStaff }` (non-deleted accounts of the organization). Registered in `src/index.ts`.
+
+`stark-frontend`
+- `src/components/layout/nav-bar.tsx` — `NavBar` (home tab + dropdown menus), extracted from
+  `main-nav.tsx`; strips the internal `/site/<id>` prefix when deciding the active tab.
+  `MainNav` now uses it (Dashboard + Organizations, unchanged).
+- `src/components/layout/organization-nav.tsx` — Organization-Info tab + Staff ▾ (when allowed).
+- `src/lib/roles.ts` — `canManageStaff(roleId)` (DEVELOPER, SUPERADMIN, ADMIN).
+- `src/lib/organization-site.ts` — `getOrganizationInfo(token)`.
+- `src/app/site/[orgId]/(app)/layout.tsx` — organization-site frame: header (user menu with Logout),
+  nav, footer; requires the site and a session.
+- `src/app/site/[orgId]/(app)/page.tsx` — Organization-Info panel (ID, Name, Total Staff).
+- `src/app/site/[orgId]/(app)/staff/page.tsx` — placeholder; 404 for roles that can't manage staff.
+- Removed `src/app/site/[orgId]/[[...path]]/page.tsx`.
+
+**Verified** (temporary organization `l09.localhost:3000` with SUPERADMIN, ADMIN, ADMIN DATA ENTRY
+OPERATOR, MANAGER, an inactive and a deleted account — all removed afterwards; sequences restored)
+- API: developer and staff → `{1002, "L09 GAMMA", totalStaff: 5}` (deleted excluded, inactive
+  counted); main-app token → 403; no/junk token → 401; still-valid staff token after the organization
+  is deactivated → 401 (developer 200); account deactivated → 401; Domain OFF → 401.
+- Browser: developer, SUPERADMIN, ADMIN see "Organization-Info  Staff ▾"; ADMIN DATA ENTRY OPERATOR
+  sees only Organization-Info and gets 404 on `/staff`; Staff ▾ → Staff → placeholder with the Staff
+  tab highlighted; Organization-Info tab active on `/`; titles "Organization-Info · L09 GAMMA",
+  "Staff · L09 GAMMA"; unknown path → 404; no console errors.
+- Main app: Dashboard + Organizations ▾ unchanged, Organizations list loads, `/staff` → 404.
+- Backend and frontend `tsc` clean; lint 0 errors.
+
+**Notes**
+- Your Next dev server wasn't running during this layer; I started one for the tests and stopped it.
+- 404 pages use Next's default (unstyled) page, on both the main app and organization sites.
+
+**Not yet**: Staff API (layer 10), Staff list + Add Staff (layer 11).
