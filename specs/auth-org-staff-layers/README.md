@@ -16,6 +16,7 @@ ends in a working, tested state. Status: ⬜ not started · 🟨 in progress · 
 | 09 | [Organization site shell & Organization-Info](09_org-site-shell-and-info.md) | Backend + Frontend | ✅ |
 | 10 | [Staff API](10_staff-api.md) | Backend | ✅ |
 | 11 | [Staff UI](11_staff-ui.md) | Frontend | ✅ |
+| 11a | [Edit Staff](11a_edit-staff.md) (added 2026-10-01) | Backend + Frontend | ✅ |
 | 12 | [End-to-end verification & docs](12_end-to-end-verification.md) | All | ⬜ |
 
 Milestones:

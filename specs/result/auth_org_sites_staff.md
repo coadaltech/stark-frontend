@@ -539,3 +539,45 @@ ADMIN, ADMIN DATA ENTRY OPERATOR — all removed afterwards with every test sess
 - `tsc` clean; lint 0 errors.
 
 **Not yet**: end-to-end verification & docs (layer 12).
+
+## Layer 11a — Edit Staff ✅ (2026-10-01, added on request)
+
+**What exists now**
+
+`stark-backend` (`src/modules/staff.ts`)
+- `GET /staff/:id` — the staff member + `canEdit` (strictly below the caller by priority).
+- `PATCH /staff/:id` — any of LoginName, LoginType, StaffWorkMode, Mobile, Address, AccountStatus;
+  404 outside the organization, 403 "You can only edit staff below your own role.", 422 for a role
+  the caller can't give or invalid fields / empty body; UpdatedBy/UpdatedDate set; deactivation
+  revokes all the staff member's sessions (`deactivated`) in the same transaction. Create now uses
+  the same name rule (suffix never doubled).
+
+`stark-frontend`
+- `src/components/detail-loader.tsx` — generic loader; `OrganizationDetailLoader` now uses it.
+- `src/components/staff/edit-staff-modal.tsx` — "Edit Staff — <name>" with **Info** (username shown
+  read-only; name without suffix; role options = roles you may give + the current one) and
+  **Active/Deactive** ("Now is Active" / "Now is Deactive"; message "deactivated and signed out
+  everywhere"). Staff you can't edit → message instead of the forms.
+- `src/components/staff/staff-table.tsx` — Action opens the modal; Info save closes it and refreshes
+  the list; status change refreshes the list with the modal open; F2 off while editing.
+- `src/lib/staff.ts` — `getStaff(id)`, `updateStaff(id, input)`; `src/types/staff.ts` — `StaffDetail`,
+  `withoutStaffSuffix`.
+
+**Verified** (your dev server + API; temporary organization `l11e.localhost:3000` with SUPERADMIN,
+2 ADMINs, MANAGER, ADMIN DATA ENTRY OPERATOR, legacy DISTRIBUTOR — removed with all test sessions;
+sequences restored)
+- canEdit: developer→SUPERADMIN ✓, SUPERADMIN→self ✗, SUPERADMIN→ADMIN ✓, ADMIN→ADMIN ✗,
+  ADMIN→MANAGER ✓, ADMIN→DISTRIBUTOR ✓; other organization / developer / unknown id → 404; bad id →
+  422; non-manager → 403.
+- PATCH: ADMIN edits MANAGER (name, W-Mode, mobile, address uppercased, UpdatedBy e_admin); typed
+  suffix not doubled; role → TALLY OPERATOR ✓, → ADMIN 422; peer / self → 403; legacy DISTRIBUTOR keeps
+  its role or moves to MANAGER; Username/Password in the body ignored (old password still works);
+  validation 422s; empty body 422.
+- Deactivate: 2 open sessions revoked `deactivated`; `/auth/me` and refresh 401; sign-in → "Your account
+  is inactive…"; list Active "0"; reactivate → can sign in.
+- Browser: modal title/tabs, name without suffix, current role, 9 role options, no password field,
+  username shown; client mobile check; save → row updated. ADMIN on a peer → "You can only edit staff
+  below your own role." and no form. Deactivate in the modal → list shows "No" and the person's open
+  browser goes to the sign-in page on its next load; reactivate works. Edit Organization still loads
+  (Info, Domain). No console errors.
+- `tsc` clean (both); lint 0 errors.

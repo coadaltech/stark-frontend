@@ -200,7 +200,12 @@ Server-set: `OrganizationId` = site organization, `LedgerId 0`, `AccountStatus '
 
 **Staff list** (legacy look): Sr, Party Name, Role, Username, W-Mode, Mobile, Address, Agent (`-`),
 Active (Yes/No), Updated By, Updated Date, Action — Search, Add (F2). **Add Staff** = the "Staff"
-modal. **Action** is shown but does nothing in this build. Order: newest first. The list shows only the site
+modal. Order: newest first.
+
+**Edit Staff** (row **Action**, added 2026-10-01): tabs **Info** (Staff Name, Role, W-Mode, Mobile,
+Address) and **Active/Deactive**. Only staff strictly below the editor's role; new roles limited as
+when creating. Username and password can't be changed. Deactivating ends all the staff member's
+sessions immediately. The list shows only the site
 organization's staff (developers have no organization, so they never appear).
 
 ## 8. Frontend structure
@@ -250,9 +255,11 @@ organization's staff (developers have no organization, so they never appear).
 20. Organization-site sign-in: specific 403 messages (after a correct password) for inactive
     organization and non-web role.
 21. Staff: list newest first; usernames letters/digits/`.`/`_`/`-`; mobile not unique.
+22. Edit Staff (tabbed: Info + Active/Deactive), only below own role; deactivation signs out
+    everywhere; username/password not editable.
 
 ## 11. Not in this build
-- Editing staff, activating/deactivating staff, deleting staff.
+- Deleting staff; changing a staff username or password.
 - Staff ledgers / Agent.
 - Changing `IsWebLogin` per role; forced password change; password reset; login rate limiting.
 - Production reverse proxy / TLS setup (documented in §2 only).
