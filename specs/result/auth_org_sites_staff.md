@@ -472,3 +472,70 @@ OPERATOR, MANAGER, an inactive and a deleted account — all removed afterwards;
 - 404 pages use Next's default (unstyled) page, on both the main app and organization sites.
 
 **Not yet**: Staff API (layer 10), Staff list + Add Staff (layer 11).
+
+## Layer 10 — Staff API ✅ (2026-10-01)
+
+**What exists now** (`stark-backend`)
+- `src/auth/guard.ts` — organization-site checks shared by `organizationSiteGuard` and the new
+  `staffManagerGuard` (also requires DEVELOPER, SUPERADMIN or ADMIN → else 403, before validation).
+- `src/modules/staff.ts` (registered in `src/index.ts`), all for the session's site organization:
+  - `GET /staff` — non-deleted staff, newest first: LoginId, LoginName, LoginType, RoleName,
+    UserName, StaffWorkMode, Mobile, Address, AccountStatus, UpdatedBy, UpdatedDate.
+  - `GET /staff/roles` — roles the caller may give (creatable, strictly below the caller by
+    priority, defined for the organization), highest first.
+  - `POST /staff` — Staff Name (≤ 70, stored UPPERCASE + " STAFF A/C"), Role, W-Mode 0–3, Username
+    (1–30 of letters/digits/`.`/`_`/`-`), Password (1–72, bcrypt), Mobile (10 digits), Address
+    (optional, ≤ 50, UPPERCASE). Server sets OrganizationId, LedgerId 0, AccountStatus '1',
+    RecordStatus 'A', AddedBy/UpdatedBy = caller's username, dates = local time. 201 → the list item.
+
+**Verified** (running API; temporary organizations `l10a` / `l10b` with staff; everything removed
+afterwards, sequences restored)
+- Roles: developer → SUPERADMIN…TALLY OPERATOR (9); SUPERADMIN → ADMIN… (8); ADMIN → MANAGER… (7);
+  ADMIN DATA ENTRY OPERATOR → 403; main-app developer → 403; no token → 401.
+- Create: developer → SUPERADMIN, SUPERADMIN → ADMIN, ADMIN → MANAGER / TALLY OPERATOR (201).
+  SUPERADMIN → SUPERADMIN, ADMIN → ADMIN, DEVELOPER, DISTRIBUTOR, CASH AGENT, unknown role → 422 on
+  Role. Non-manager caller → 403 (also with an invalid body).
+- Stored row: OrganizationId = site, LedgerId 0, "RAHUL KUMAR STAFF A/C", address uppercased and
+  trimmed, active, AddedBy/UpdatedBy = caller, bcrypt hash that verifies; a new ADMIN signs in at the
+  site.
+- Usernames: same organization other case → 422; other organization → 201; developer's username (any
+  case) → 422; deleted account's username → 201; 5 parallel identical creates → one 201, four 422.
+- Validation 422 with field messages: mobile, username with space / `@` / 31 chars, blank or 71-char
+  name (70 OK), W-Mode 5, 73-char password, 51-char address, all fields missing; no address → 201.
+- Isolation: A's list has only A's non-deleted staff (count matches the DB); B's list only B's.
+- Organization deactivated → staff caller 401, developer 200.
+- `tsc` clean; no errors in the API log.
+
+**Not yet**: Staff screens (layer 11); the `/api` route still blocks organization hosts (opened in 11).
+
+## Layer 11 — Staff UI ✅ (2026-10-01)
+
+**What exists now** (`stark-frontend`)
+- `src/types/staff.ts` — `Staff`, `CreatableRole`, W-Mode labels (NONE, COMMAN, WHATSAPP, CALLING).
+- `src/lib/staff.ts` — `listStaff(token)`, `listCreatableRoles(token)` (server), `createStaff(input)`
+  (browser, via `/api`).
+- `src/components/staff/staff-form-fields.ts` — the "Staff" modal fields (Role options = the roles the
+  user may give, after "Select Role").
+- `src/components/staff/staff-table.tsx` — legacy-look list (Sr, Party Name, Role, Username, W-Mode,
+  Mobile, Address, Agent "-", Active Yes/No, Updated By, Updated Date, inert Action), Search, Add (F2),
+  refresh after saving.
+- `src/app/site/[orgId]/(app)/staff/page.tsx` — loads staff + creatable roles on the server; 404 for
+  roles that can't manage staff.
+- `src/proxy.ts` — `/api/*` forwards on organization hosts; unknown host → 404 JSON.
+
+**Verified** (your dev server and API; temporary organization `l11.localhost:3000` with SUPERADMIN,
+ADMIN, ADMIN DATA ENTRY OPERATOR — all removed afterwards with every test session; sequences restored)
+- Developer: Staff ▾ → Staff ("Staff · L11 DELTA"), headers as specified, rows newest first; F2 opens
+  "Staff"; Role options = Select Role + SUPERADMIN…TALLY OPERATOR (9); W-Mode NONE…CALLING; empty
+  Save → required messages; duplicate username (other case) → "Username is already taken" under the
+  field, modal open; fixed username → saved, list refreshed with "PRIYA SHARMA STAFF A/C · SUPERADMIN ·
+  p.sharma · WHATSAPP · SECTOR 5 · Yes · developer" on top; search filters / "No records found";
+  `/api/organizations` from the organization site → 403.
+- SUPERADMIN: Role options ADMIN…TALLY OPERATOR (8); created an ADMIN, who then signs in and sees
+  Staff. ADMIN: options MANAGER…TALLY OPERATOR (7); created a MANAGER.
+- ADMIN DATA ENTRY OPERATOR: no Staff menu; `/staff` → 404; `/api/staff` GET/POST → 403.
+- The list fits a 1280-px window without horizontal scrolling; no console errors.
+- Main-app browser suite re-run: unchanged. Unknown host `/api/staff` → 404.
+- `tsc` clean; lint 0 errors.
+
+**Not yet**: end-to-end verification & docs (layer 12).

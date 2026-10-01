@@ -190,9 +190,9 @@ already used by staff (reserved-username trigger).
 | Staff Name | `LoginName` | required; stored UPPERCASE + `" STAFF A/C"` (typed ≤ 70) |
 | Role | `LoginType` | select limited to roles the signed-in user may create (§3) |
 | W-Mode | `StaffWorkMode` | NONE 0, COMMAN 1, WHATSAPP 2, CALLING 3 |
-| Username | `UserName` | required, ≤ 30, no spaces, unique **within the organization** (case-insensitive), not a developer's username, stored as typed |
+| Username | `UserName` | required, ≤ 30, letters/digits/`.`/`_`/`-` only (no spaces), unique **within the organization** (case-insensitive), not a developer's username, stored as typed |
 | Password | `Password` | required, ≤ 72, bcrypt |
-| Mobile | `Mobile` | exactly 10 digits |
+| Mobile | `Mobile` | exactly 10 digits (not unique) |
 | Address | `Address` | optional, ≤ 50, UPPERCASE |
 
 Server-set: `OrganizationId` = site organization, `LedgerId 0`, `AccountStatus '1'`,
@@ -200,7 +200,7 @@ Server-set: `OrganizationId` = site organization, `LedgerId 0`, `AccountStatus '
 
 **Staff list** (legacy look): Sr, Party Name, Role, Username, W-Mode, Mobile, Address, Agent (`-`),
 Active (Yes/No), Updated By, Updated Date, Action — Search, Add (F2). **Add Staff** = the "Staff"
-modal. **Action** is shown but does nothing in this build. The list shows only the site
+modal. **Action** is shown but does nothing in this build. Order: newest first. The list shows only the site
 organization's staff (developers have no organization, so they never appear).
 
 ## 8. Frontend structure
@@ -249,6 +249,7 @@ organization's staff (developers have no organization, so they never appear).
 19. Host lookups aren't cached; the frontend has no `MAIN_APP_HOST` (the API decides).
 20. Organization-site sign-in: specific 403 messages (after a correct password) for inactive
     organization and non-web role.
+21. Staff: list newest first; usernames letters/digits/`.`/`_`/`-`; mobile not unique.
 
 ## 11. Not in this build
 - Editing staff, activating/deactivating staff, deleting staff.
