@@ -40,9 +40,14 @@ export async function proxy(request: NextRequest) {
     return sitePages(request, site, host, (init) => NextResponse.next(init));
   }
 
-  // Browser API calls exist only on the main app for now (organization sites get theirs in later layers).
-  if (isApi) return NextResponse.json({ message: "Not found" }, { status: 404 });
-  if (!site) return NextResponse.rewrite(withPath(request, `${SITE_PREFIX}/unknown`));
+  if (!site) {
+    return isApi
+      ? NextResponse.json({ message: "Site not found" }, { status: 404 })
+      : NextResponse.rewrite(withPath(request, `${SITE_PREFIX}/unknown`));
+  }
+  // Organization site: the /api route forwards with this site's session; the API decides what the
+  // session may do (organization-site routes only).
+  if (isApi) return NextResponse.next();
   const internal = withPath(request, `${SITE_PREFIX}/${site.organizationId}${pathname === "/" ? "" : pathname}`);
   return sitePages(request, site, host, (init) => NextResponse.rewrite(internal, init));
 }
