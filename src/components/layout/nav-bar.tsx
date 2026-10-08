@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 export type NavMenu = {
   label: string;
+  /** A plain tab that opens this page (no dropdown); `items` is then ignored. */
+  href?: string;
   items: {
     label: string;
     href: string;
@@ -31,7 +33,7 @@ function visiblePath(pathname: string) {
 const tabClass =
   "flex h-full items-center px-4 text-sm font-medium text-white outline-none transition-colors hover:bg-brand-nav-active/60 focus-visible:bg-brand-nav-active/60";
 
-/** The tab bar under the header: a home tab plus dropdown menus. */
+/** The tab bar under the header: a home tab, then plain tabs (`href`) and dropdown menus. */
 export function NavBar({ home, menus }: { home: { label: string; href: string }; menus: NavMenu[] }) {
   const pathname = visiblePath(usePathname());
 
@@ -45,6 +47,17 @@ export function NavBar({ home, menus }: { home: { label: string; href: string };
       </Link>
 
       {menus.map((menu) => {
+        if (menu.href) {
+          return (
+            <Link
+              key={menu.label}
+              href={menu.href}
+              className={cn(tabClass, pathname.startsWith(menu.href) && "bg-brand-nav-active")}
+            >
+              {menu.label}
+            </Link>
+          );
+        }
         const active = menu.items.some((item) =>
           pathname.startsWith(item.href),
         );

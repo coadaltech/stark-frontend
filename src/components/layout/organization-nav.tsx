@@ -2,9 +2,10 @@
 
 import { NavBar, type NavMenu } from "@/components/layout/nav-bar";
 
-const staffMenu: NavMenu = { label: "Staff", items: [{ label: "Staff", href: "/staff" }] };
-
-/** Organization-site tabs: Organization-Info, plus Staff ▾ for roles that manage staff. */
-export function OrganizationNav({ showStaff }: { showStaff: boolean }) {
-  return <NavBar home={{ label: "Organization-Info", href: "/" }} menus={showStaff ? [staffMenu] : []} />;
+/**
+ * Organization-site tabs: Organization-Info, then the menus the user may see (built by the layout from
+ * GET /site/permissions/me), then Permissions for DEVELOPER / SUPERADMIN / ADMIN.
+ */
+export function OrganizationNav({ menus }: { menus: NavMenu[] }) {
+  return <NavBar home={{ label: "Organization-Info", href: "/" }} menus={menus} />;
 }

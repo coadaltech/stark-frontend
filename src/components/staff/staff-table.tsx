@@ -44,18 +44,26 @@ function HeaderRow() {
   );
 }
 
-type StaffTableProps = { staff: Staff[]; roles: CreatableRole[]; loadError?: string };
+type StaffTableProps = {
+  staff: Staff[];
+  roles: CreatableRole[];
+  /** Permission to add staff (Add button, F2). */
+  canAdd: boolean;
+  /** Permission to edit staff (Action → Edit Staff; who is below you is still checked there). */
+  canEdit: boolean;
+  loadError?: string;
+};
 
-export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
+export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | null>(null);
 
-  // F2 opens the Add modal, matching the button hint (not while editing).
+  // F2 opens the Add modal, matching the button hint (not while editing; only with Add permission).
   const isEditing = editing !== null;
   useEffect(() => {
-    if (isEditing) return;
+    if (isEditing || !canAdd) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "F2") {
         event.preventDefault();
@@ -64,7 +72,7 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isEditing]);
+  }, [isEditing, canAdd]);
 
   async function handleCreate(values: FormValues) {
     await createStaff({
@@ -102,13 +110,15 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
           onChange={(e) => setSearch(e.target.value)}
           className="ml-5 h-[27px] w-[262px] border border-[#ccc] px-2 text-[13px] outline-none focus:border-brand-add"
         />
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="ml-auto h-[31px] w-[120px] rounded-[2px] bg-brand-add text-[13px] font-bold text-white transition-colors hover:bg-brand-add-hover"
-        >
-          Add <span className="text-[10px] font-normal">(F2)</span>
-        </button>
+        {canAdd && (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="ml-auto h-[31px] w-[120px] rounded-[2px] bg-brand-add text-[13px] font-bold text-white transition-colors hover:bg-brand-add-hover"
+          >
+            Add <span className="text-[10px] font-normal">(F2)</span>
+          </button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -144,14 +154,16 @@ export function StaffTable({ staff, roles, loadError }: StaffTableProps) {
                   <td>{s.UpdatedBy}</td>
                   <td>{formatDateTime(s.UpdatedDate)}</td>
                   <td>
-                    <button
-                      type="button"
-                      onClick={() => setEditing(s)}
-                      aria-label={`Action: ${s.UserName}`}
-                      className="rounded-[2px] bg-brand-action px-2.5 py-[3px] text-[10.5px] text-white hover:bg-brand-nav-active"
-                    >
-                      Action
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing(s)}
+                        aria-label={`Action: ${s.UserName}`}
+                        className="rounded-[2px] bg-brand-action px-2.5 py-[3px] text-[10.5px] text-white hover:bg-brand-nav-active"
+                      >
+                        Action
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
