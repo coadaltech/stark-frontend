@@ -1,11 +1,24 @@
-import type { FormField } from "@/components/form-modal/types";
-import { WORK_MODES, type CreatableRole } from "@/types/staff";
+import type { FormField, SelectField } from "@/components/form-modal/types";
+import { WORK_MODES, type CreatableRole, type StaffPermissionOption } from "@/types/staff";
 
 // Usernames: letters, digits, ".", "_", "-" (the API applies the same rule).
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{1,30}$/;
 
+/**
+ * "Permission": an optional staff permission. The person's actions need their role permission AND this
+ * staff permission; "None" = the role's permissions only.
+ */
+export function permissionField(permissionOptions: StaffPermissionOption[]): SelectField {
+  return {
+    name: "StaffPermissionId",
+    label: "Permission",
+    type: "select",
+    options: [{ label: "None", value: "" }, ...permissionOptions.map((p) => ({ label: p.Title, value: String(p.StaffPermissionId) }))],
+  };
+}
+
 /** The "Staff" (Add Staff) modal; names match the API body. Role lists only the roles the user may give. */
-export function staffFormFields(roles: CreatableRole[]): FormField[] {
+export function staffFormFields(roles: CreatableRole[], permissionOptions: StaffPermissionOption[]): FormField[] {
   return [
     { name: "LoginName", label: "Staff Name", type: "text", placeholder: "NAME", required: true, maxLength: 70, uppercase: true },
     {
@@ -43,6 +56,7 @@ export function staffFormFields(roles: CreatableRole[]): FormField[] {
       inputMode: "numeric",
       validate: (value) => (/^\d{10}$/.test(value) ? undefined : "Mobile must be 10 digits"),
     },
-    { name: "Address", label: "Address", type: "text", placeholder: "ADDRESS", maxLength: 50, uppercase: true, width: "full" },
+    { name: "Address", label: "Address", type: "text", placeholder: "ADDRESS", maxLength: 50, uppercase: true, width: "two-thirds" },
+    permissionField(permissionOptions),
   ];
 }

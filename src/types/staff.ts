@@ -11,7 +11,13 @@ export type Staff = {
   AccountStatus: string; // "1" active, "0" inactive
   UpdatedBy: string;
   UpdatedDate: string; // ISO timestamp
+  /** Assigned staff permission (null = role permissions only). */
+  StaffPermissionId: number | null;
+  StaffPermissionTitle: string | null;
 };
+
+/** A staff permission that can be assigned in Add / Edit Staff (GET /staff/permission-options). */
+export type StaffPermissionOption = { StaffPermissionId: number; Title: string };
 
 /** GET /staff/:id: a staff member plus whether the signed-in user may edit them (only below own role). */
 export type StaffDetail = Staff & { canEdit: boolean };

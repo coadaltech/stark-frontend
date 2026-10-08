@@ -9,21 +9,22 @@ import { staffFormFields } from "./staff-form-fields";
 import { formatDateTime } from "@/lib/format";
 import { createStaff } from "@/lib/staff";
 import { cn } from "@/lib/utils";
-import { workModeLabel, type CreatableRole, type Staff } from "@/types/staff";
+import { workModeLabel, type CreatableRole, type Staff, type StaffPermissionOption } from "@/types/staff";
 
 const columns = [
   { label: "Sr", className: "w-[38px]" },
-  { label: "Party Name", className: "w-[190px]" },
-  { label: "Role", className: "w-[140px]" },
-  { label: "Username", className: "w-[110px]" },
-  { label: "W-Mode", className: "w-[80px]" },
-  { label: "Mobile", className: "w-[100px]" },
-  { label: "Address", className: "w-[110px]" },
-  { label: "Agent", className: "w-[55px]" },
-  { label: "Active", className: "w-[55px]" },
-  { label: "Updated By", className: "w-[100px]" },
+  { label: "Party Name", className: "w-[150px]" },
+  { label: "Role", className: "w-[125px]" },
+  { label: "Username", className: "w-[100px]" },
+  { label: "Permission", className: "w-[115px]" },
+  { label: "W-Mode", className: "w-[75px]" },
+  { label: "Mobile", className: "w-[95px]" },
+  { label: "Address", className: "w-[90px]" },
+  { label: "Agent", className: "w-[50px]" },
+  { label: "Active", className: "w-[52px]" },
+  { label: "Updated By", className: "w-[90px]" },
   { label: "Updated Date", className: "w-[150px]" },
-  { label: "Action", className: "w-[70px]" },
+  { label: "Action", className: "w-[68px]" },
 ];
 
 function HeaderRow() {
@@ -47,6 +48,8 @@ function HeaderRow() {
 type StaffTableProps = {
   staff: Staff[];
   roles: CreatableRole[];
+  /** Staff permissions that can be assigned (Permission dropdown). */
+  permissionOptions: StaffPermissionOption[];
   /** Permission to add staff (Add button, F2). */
   canAdd: boolean;
   /** Permission to edit staff (Action → Edit Staff; who is below you is still checked there). */
@@ -54,7 +57,7 @@ type StaffTableProps = {
   loadError?: string;
 };
 
-export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTableProps) {
+export function StaffTable({ staff, roles, permissionOptions, canAdd, canEdit, loadError }: StaffTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -83,6 +86,7 @@ export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTa
       Password: values.Password,
       Mobile: values.Mobile,
       Address: values.Address,
+      StaffPermissionId: values.StaffPermissionId ? Number(values.StaffPermissionId) : null,
     });
     router.refresh();
   }
@@ -90,7 +94,7 @@ export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTa
   const query = search.trim().toLowerCase();
   const rows = query
     ? staff.filter((s) =>
-        [s.LoginName, s.RoleName, s.UserName, workModeLabel(s.StaffWorkMode), s.Mobile, s.Address, s.UpdatedBy].some(
+        [s.LoginName, s.RoleName, s.UserName, s.StaffPermissionTitle ?? "", workModeLabel(s.StaffWorkMode), s.Mobile, s.Address, s.UpdatedBy].some(
           (value) => value.toLowerCase().includes(query),
         ),
       )
@@ -146,13 +150,14 @@ export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTa
                   <td>{s.LoginName}</td>
                   <td>{s.RoleName}</td>
                   <td>{s.UserName}</td>
+                  <td>{s.StaffPermissionTitle ?? "-"}</td>
                   <td>{workModeLabel(s.StaffWorkMode)}</td>
                   <td>{s.Mobile}</td>
                   <td>{s.Address}</td>
                   <td>-</td>
                   <td>{s.AccountStatus === "1" ? "Yes" : "No"}</td>
                   <td>{s.UpdatedBy}</td>
-                  <td>{formatDateTime(s.UpdatedDate)}</td>
+                  <td className="whitespace-nowrap">{formatDateTime(s.UpdatedDate)}</td>
                   <td>
                     {canEdit && (
                       <button
@@ -179,10 +184,11 @@ export function StaffTable({ staff, roles, canAdd, canEdit, loadError }: StaffTa
         </table>
       </div>
 
-      <FormModal open={addOpen} onOpenChange={setAddOpen} title="Staff" fields={staffFormFields(roles)} onSubmit={handleCreate} />
+      <FormModal open={addOpen} onOpenChange={setAddOpen} title="Staff" fields={staffFormFields(roles, permissionOptions)} onSubmit={handleCreate} />
       <EditStaffModal
         staff={editing}
         roles={roles}
+        permissionOptions={permissionOptions}
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);

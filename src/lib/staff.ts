@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { CreatableRole, Staff, StaffDetail } from "@/types/staff";
+import type { CreatableRole, Staff, StaffDetail, StaffPermissionOption } from "@/types/staff";
 
 export type CreateStaffInput = {
   LoginName: string;
@@ -9,10 +9,14 @@ export type CreateStaffInput = {
   Password: string;
   Mobile: string;
   Address: string;
+  /** Optional staff permission (null = none: role permissions only). */
+  StaffPermissionId: number | null;
 };
 
 /** Any subset of the editable fields; each Edit Staff tab sends only its own. */
-export type UpdateStaffInput = Partial<Pick<CreateStaffInput, "LoginName" | "LoginType" | "StaffWorkMode" | "Mobile" | "Address">> & {
+export type UpdateStaffInput = Partial<
+  Pick<CreateStaffInput, "LoginName" | "LoginType" | "StaffWorkMode" | "Mobile" | "Address" | "StaffPermissionId">
+> & {
   AccountStatus?: "1" | "0";
 };
 
@@ -24,6 +28,11 @@ export function listStaff(token: string | undefined) {
 /** Server only: roles the signed-in user may give to new staff. */
 export function listCreatableRoles(token: string | undefined) {
   return api<CreatableRole[]>("/staff/roles", { cache: "no-store", token });
+}
+
+/** Server only: staff permissions that can be assigned in Add / Edit Staff. */
+export function listStaffPermissionOptions(token: string | undefined) {
+  return api<StaffPermissionOption[]>("/staff/permission-options", { cache: "no-store", token });
 }
 
 /** Browser: adds a staff member to the signed-in organization site. */

@@ -1,14 +1,14 @@
 "use client";
 
 import { Modal } from "@/components/modal";
-import { EntityForm } from "./entity-form";
-import type { FormField, FormValues } from "./types";
+import { EntityForm, type FormFields } from "./entity-form";
+import type { FormValues } from "./types";
 
 type FormModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  fields: FormField[];
+  fields: FormFields;
   initialValues?: FormValues;
   /** Called with the validated values; the modal closes once it resolves. */
   onSubmit: (values: FormValues) => void | Promise<void>;

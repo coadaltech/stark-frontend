@@ -6,8 +6,14 @@ import { isInputField, type FormField, type FormSlotState, type FormValues, type
 
 export type EntityFormActionsState = FormSlotState;
 
+/**
+ * The form's fields — or a function of the current values, for forms whose fields depend on each other
+ * (options filtered by another field, fields shown only for some choices, disabled checkboxes, …).
+ */
+export type FormFields = FormField[] | ((values: FormValues) => FormField[]);
+
 type EntityFormProps = {
-  fields: FormField[];
+  fields: FormFields;
   /** Starting values (e.g. the record being edited); fields not listed use their defaults. */
   initialValues?: FormValues;
   /** Called with trimmed, validated values. Throw to keep the form open and show the error. */
@@ -44,22 +50,29 @@ const widthSpan: Record<NonNullable<InputField["width"]>, number> = {
 };
 
 const controlClass =
-  "h-[31px] w-full border border-[#ced4da] bg-white px-2.5 text-[12.5px] font-semibold text-[#333] outline-none placeholder:font-normal placeholder:text-[#c4c4c4] focus:border-[#e6c45b] focus:bg-[#fde8a0] aria-invalid:border-red-500";
+  "h-[31px] w-full border border-[#ced4da] bg-white px-2.5 text-[12.5px] font-semibold text-[#333] outline-none placeholder:font-normal placeholder:text-[#c4c4c4] focus:border-[#e6c45b] focus:bg-[#fde8a0] aria-invalid:border-red-500 disabled:cursor-not-allowed disabled:bg-[#f2f2f2] disabled:text-[#666]";
+
+const emptyValue = (f: InputField) =>
+  f.defaultValue ?? (f.type === "select" ? (f.options[0]?.value ?? "") : f.type === "checkbox" ? (f.uncheckedValue ?? "0") : "");
 
 function defaultValues(fields: InputField[], initial?: FormValues): FormValues {
-  return Object.fromEntries(
-    fields.map((f) => [
-      f.name,
-      initial?.[f.name] ??
-        f.defaultValue ??
-        (f.type === "select" ? (f.options[0]?.value ?? "") : f.type === "checkbox" ? (f.uncheckedValue ?? "0") : ""),
-    ]),
-  );
+  return Object.fromEntries(fields.map((f) => [f.name, initial?.[f.name] ?? emptyValue(f)]));
+}
+
+/**
+ * The value a field shows and submits: fields that appeared later start empty, and a select whose value
+ * is no longer one of its options falls back to its first option (e.g. a "Select …" placeholder).
+ */
+function fieldValue(field: InputField, values: FormValues) {
+  const value = values[field.name] ?? emptyValue(field);
+  if (field.type === "select" && !field.options.some((o) => o.value === value)) return field.options[0]?.value ?? "";
+  return value;
 }
 
 function validateAll(fields: InputField[], values: FormValues) {
   const errors: Record<string, string> = {};
   for (const field of fields) {
+    if (field.disabled) continue;
     const value = values[field.name]?.trim() ?? "";
     const required = field.required || field.requiredWhen?.(values);
     if (required && !value) errors[field.name] = `${field.label} is required`;
@@ -72,9 +85,13 @@ function validateAll(fields: InputField[], values: FormValues) {
 }
 
 /** Config-driven form: renders fields on a 12-column grid, validates, and reports submit errors. */
-export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyClassName, renderActions }: EntityFormProps) {
+export function EntityForm({ fields: fieldsProp, initialValues, onSubmit, onSuccess, bodyClassName, renderActions }: EntityFormProps) {
+  const resolveFields = (values: FormValues) => (typeof fieldsProp === "function" ? fieldsProp(values) : fieldsProp);
+  const [values, setValues] = useState(() =>
+    defaultValues(resolveFields(initialValues ?? {}).filter(isInputField), initialValues),
+  );
+  const fields = resolveFields(values);
   const inputFields = fields.filter(isInputField);
-  const [values, setValues] = useState(() => defaultValues(inputFields, initialValues));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
@@ -97,7 +114,8 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
 
     // Passwords are sent exactly as typed; everything else is trimmed.
     const passwordFields = new Set(inputFields.filter((f) => f.type === "password").map((f) => f.name));
-    const trimmed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, passwordFields.has(k) ? v : v.trim()]));
+    const shown = { ...values, ...Object.fromEntries(inputFields.map((f) => [f.name, fieldValue(f, values)])) };
+    const trimmed = Object.fromEntries(Object.entries(shown).map(([k, v]) => [k, passwordFields.has(k) ? v : v.trim()]));
     const nextErrors = validateAll(inputFields, trimmed);
     setErrors(nextErrors);
     const firstInvalid = inputFields.find((f) => nextErrors[f.name]);
@@ -173,12 +191,13 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
                     id={id}
                     name={field.name}
                     type="checkbox"
-                    checked={values[field.name] === (field.checkedValue ?? "1")}
+                    checked={fieldValue(field, values) === (field.checkedValue ?? "1")}
+                    disabled={field.disabled}
                     onChange={(e) =>
                       setValue(field.name, e.target.checked ? (field.checkedValue ?? "1") : (field.uncheckedValue ?? "0"))
                     }
                     aria-invalid={!!error || undefined}
-                    className="size-6 shrink-0 cursor-pointer accent-[#1a73e8]"
+                    className="size-6 shrink-0 cursor-pointer accent-[#1a73e8] disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   {field.label}
                 </label>
@@ -186,7 +205,8 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
                 <textarea
                   id={id}
                   name={field.name}
-                  value={values[field.name]}
+                  value={fieldValue(field, values)}
+                  disabled={field.disabled}
                   rows={field.rows ?? 4}
                   maxLength={field.maxLength}
                   placeholder={field.placeholder}
@@ -200,7 +220,8 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
                 <select
                   id={id}
                   name={field.name}
-                  value={values[field.name]}
+                  value={fieldValue(field, values)}
+                  disabled={field.disabled}
                   onChange={(e) => setValue(field.name, e.target.value)}
                   aria-invalid={!!error || undefined}
                   className={cn(controlClass, "h-[28px] px-1.5")}
@@ -216,7 +237,8 @@ export function EntityForm({ fields, initialValues, onSubmit, onSuccess, bodyCla
                   id={id}
                   name={field.name}
                   type={field.type}
-                  value={values[field.name]}
+                  value={fieldValue(field, values)}
+                  disabled={field.disabled}
                   maxLength={field.maxLength}
                   placeholder={field.placeholder}
                   inputMode={field.inputMode ?? (field.type === "tel" ? "numeric" : undefined)}

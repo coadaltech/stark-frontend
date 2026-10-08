@@ -4,8 +4,8 @@ import { StaffTable } from "@/components/staff/staff-table";
 import { getAccessToken, requireSession } from "@/lib/auth/session";
 import { requireOrganizationSite } from "@/lib/org-site";
 import { getPagePermission } from "@/lib/permissions";
-import { listCreatableRoles, listStaff } from "@/lib/staff";
-import type { CreatableRole, Staff } from "@/types/staff";
+import { listCreatableRoles, listStaff, listStaffPermissionOptions } from "@/lib/staff";
+import type { CreatableRole, Staff, StaffPermissionOption } from "@/types/staff";
 
 export async function generateMetadata({ params }: PageProps<"/site/[orgId]/staff">): Promise<Metadata> {
   const site = await requireOrganizationSite((await params).orgId);
@@ -22,16 +22,19 @@ export default async function StaffPage({ params }: PageProps<"/site/[orgId]/sta
   const token = await getAccessToken();
   let staff: Staff[] = [];
   let roles: CreatableRole[] = [];
+  let permissionOptions: StaffPermissionOption[] = [];
   let loadError: string | undefined;
   try {
     // The role list is only needed (and only allowed) for Add / Edit.
-    [staff, roles] = await Promise.all([
+    const canManage = page.add || page.edit;
+    [staff, roles, permissionOptions] = await Promise.all([
       listStaff(token),
-      page.add || page.edit ? listCreatableRoles(token) : Promise.resolve([]),
+      canManage ? listCreatableRoles(token) : Promise.resolve([]),
+      canManage ? listStaffPermissionOptions(token) : Promise.resolve([]),
     ]);
   } catch {
     loadError = "Could not load staff. Please try again.";
   }
 
-  return <StaffTable staff={staff} roles={roles} canAdd={page.add} canEdit={page.edit} loadError={loadError} />;
+  return <StaffTable staff={staff} roles={roles} permissionOptions={permissionOptions} canAdd={page.add} canEdit={page.edit} loadError={loadError} />;
 }

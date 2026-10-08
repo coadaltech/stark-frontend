@@ -8,12 +8,15 @@ import { saveSlot } from "@/components/organizations/organization-settings-tab";
 import { TabbedModal } from "@/components/tabbed-modal";
 import { getStaff, updateStaff } from "@/lib/staff";
 import { cn } from "@/lib/utils";
-import { WORK_MODES, withoutStaffSuffix, type CreatableRole, type Staff, type StaffDetail } from "@/types/staff";
+import { WORK_MODES, withoutStaffSuffix, type CreatableRole, type Staff, type StaffDetail, type StaffPermissionOption } from "@/types/staff";
+import { permissionField } from "./staff-form-fields";
 
 type EditStaffModalProps = {
   staff: Staff | null;
   /** Roles the signed-in user may give (GET /staff/roles). */
   roles: CreatableRole[];
+  /** Staff permissions that can be assigned (Permission dropdown). */
+  permissionOptions: StaffPermissionOption[];
   onClose: () => void;
   /** Called after the Info tab saves (closes the modal). */
   onSaved: () => void;
@@ -21,7 +24,7 @@ type EditStaffModalProps = {
   onChanged: () => void;
 };
 
-export function EditStaffModal({ staff, roles, onClose, onSaved, onChanged }: EditStaffModalProps) {
+export function EditStaffModal({ staff, roles, permissionOptions, onClose, onSaved, onChanged }: EditStaffModalProps) {
   const id = staff?.LoginId;
   // Stable per staff member, so each tab loads once when it opens.
   const load = useCallback(() => getStaff(id ?? 0), [id]);
@@ -47,14 +50,14 @@ export function EditStaffModal({ staff, roles, onClose, onSaved, onChanged }: Ed
       onOpenChange={(open) => !open && onClose()}
       title={staff ? `Edit Staff — ${staff.LoginName}` : "Edit Staff"}
       tabs={[
-        { value: "info", label: "Info", content: tab((detail) => <StaffInfoForm detail={detail} roles={roles} onSaved={onSaved} />) },
+        { value: "info", label: "Info", content: tab((detail) => <StaffInfoForm detail={detail} roles={roles} permissionOptions={permissionOptions} onSaved={onSaved} />) },
         { value: "status", label: "Active/Deactive", content: tab((detail) => <StaffStatusToggle detail={detail} onChanged={onChanged} />) },
       ]}
     />
   );
 }
 
-function infoFields(detail: StaffDetail, roles: CreatableRole[]): FormField[] {
+function infoFields(detail: StaffDetail, roles: CreatableRole[], permissionOptions: StaffPermissionOption[]): FormField[] {
   // The current role stays selectable even if the editor couldn't give it (e.g. legacy roles).
   const roleOptions = roles.some((r) => r.roleId === detail.LoginType)
     ? roles
@@ -85,25 +88,37 @@ function infoFields(detail: StaffDetail, roles: CreatableRole[]): FormField[] {
       validate: (value) => (/^\d{10}$/.test(value) ? undefined : "Mobile must be 10 digits"),
     },
     { name: "Address", label: "Address", type: "text", placeholder: "ADDRESS", maxLength: 50, uppercase: true, width: "two-thirds" },
+    { ...permissionField(permissionOptions), startRow: true },
     { ...saveSlot(3), startRow: true },
   ];
 }
 
 /** "Info" tab: name, role, W-Mode, mobile, address. Username and password can't be changed here. */
-function StaffInfoForm({ detail, roles, onSaved }: { detail: StaffDetail; roles: CreatableRole[]; onSaved: () => void }) {
+function StaffInfoForm({
+  detail,
+  roles,
+  permissionOptions,
+  onSaved,
+}: {
+  detail: StaffDetail;
+  roles: CreatableRole[];
+  permissionOptions: StaffPermissionOption[];
+  onSaved: () => void;
+}) {
   return (
     <div>
       <p className="mb-4 text-[12.5px] text-[#666]">
         Username <span className="font-semibold text-[#333]">{detail.UserName}</span>
       </p>
       <EntityForm
-        fields={infoFields(detail, roles)}
+        fields={infoFields(detail, roles, permissionOptions)}
         initialValues={{
           LoginName: withoutStaffSuffix(detail.LoginName),
           LoginType: String(detail.LoginType),
           StaffWorkMode: String(detail.StaffWorkMode),
           Mobile: detail.Mobile,
           Address: detail.Address,
+          StaffPermissionId: detail.StaffPermissionId === null ? "" : String(detail.StaffPermissionId),
         }}
         onSubmit={async (values) => {
           await updateStaff(detail.LoginId, {
@@ -112,6 +127,7 @@ function StaffInfoForm({ detail, roles, onSaved }: { detail: StaffDetail; roles:
             StaffWorkMode: Number(values.StaffWorkMode),
             Mobile: values.Mobile,
             Address: values.Address,
+            StaffPermissionId: values.StaffPermissionId ? Number(values.StaffPermissionId) : null,
           });
         }}
         onSuccess={onSaved}

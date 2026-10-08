@@ -22,6 +22,8 @@ type BaseField = GridPlacement & {
   requiredWhen?: (values: FormValues) => boolean;
   /** Extra check run after the required check; return an error message to fail. */
   validate?: (value: string, values: FormValues) => string | undefined;
+  /** Shown but not editable; not validated (its value is still passed to onSubmit). */
+  disabled?: boolean;
 };
 
 export type TextField = BaseField & {

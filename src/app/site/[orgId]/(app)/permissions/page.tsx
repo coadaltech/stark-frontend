@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { PermissionsTabs } from "@/components/permissions/permissions-tabs";
+import { RolePermissionsTable } from "@/components/permissions/role-permissions-table";
+import { StaffPermissionsTable } from "@/components/permissions/staff-permissions-table";
+import { getAccessToken, requireSession } from "@/lib/auth/session";
 import { requireOrganizationSite } from "@/lib/org-site";
+import {
+  getPermissionOptions,
+  listRolePermissions,
+  listStaffPermissions,
+  type PermissionOptions,
+  type RolePermission,
+  type StaffPermission,
+} from "@/lib/role-permissions";
 import { canManagePermissions } from "@/lib/roles";
 
 export async function generateMetadata({ params }: PageProps<"/site/[orgId]/permissions">): Promise<Metadata> {
@@ -9,18 +20,31 @@ export async function generateMetadata({ params }: PageProps<"/site/[orgId]/perm
   return { title: `Permissions · ${site.name}` };
 }
 
-// Placeholder until the Role and Staff tabs (permissions layers 07 and 08).
+/** Permissions section (spec §6.2–6.3): DEVELOPER, SUPERADMIN and ADMIN only. */
 export default async function PermissionsPage({ params }: PageProps<"/site/[orgId]/permissions">) {
   await requireOrganizationSite((await params).orgId);
   const user = await requireSession();
   if (!canManagePermissions(user.roleId)) notFound();
 
+  const token = await getAccessToken();
+  let permissions: RolePermission[] = [];
+  let options: PermissionOptions = { menus: [], roles: [], grantable: {} };
+  let staffPermissions: StaffPermission[] = [];
+  let loadError: string | undefined;
+  try {
+    [permissions, options, staffPermissions] = await Promise.all([
+      listRolePermissions(token),
+      getPermissionOptions(token),
+      listStaffPermissions(token),
+    ]);
+  } catch {
+    loadError = "Could not load permissions. Please try again.";
+  }
+
   return (
-    <section className="flex min-h-0 flex-1 flex-col border-t-2 border-brand bg-white">
-      <div className="flex h-[52px] shrink-0 items-center px-6">
-        <h1 className="text-sm font-bold text-[#555]">Permissions</h1>
-      </div>
-      <p className="px-6 py-4 text-[13px] font-semibold text-[#888]">Role and staff permissions are coming soon.</p>
-    </section>
+    <PermissionsTabs
+      role={<RolePermissionsTable permissions={permissions} options={options} loadError={loadError} />}
+      staff={<StaffPermissionsTable staffPermissions={staffPermissions} options={options} loadError={loadError} />}
+    />
   );
 }
