@@ -27,8 +27,11 @@ type BaseField = GridPlacement & {
 };
 
 export type TextField = BaseField & {
-  /** "date" renders the browser date picker; its value is "YYYY-MM-DD" (or "" when empty). */
-  type: "text" | "password" | "tel" | "email" | "date";
+  /**
+   * "date" renders the browser date picker (value "YYYY-MM-DD"); "time" the browser time picker (value
+   * 24-hour "HH:MM"); "" when empty.
+   */
+  type: "text" | "password" | "tel" | "email" | "date" | "time";
   maxLength?: number;
   /** Store and show the value in upper case. */
   uppercase?: boolean;
@@ -49,6 +52,8 @@ export type CheckboxField = BaseField & {
   uncheckedValue?: string;
   /** Put the label right next to the box instead of the wide legacy gap. */
   compact?: boolean;
+  /** Pad the checkbox down so it lines up with inputs that have a label above them. */
+  alignWithInputs?: boolean;
 };
 
 /** An editable value of the form. */

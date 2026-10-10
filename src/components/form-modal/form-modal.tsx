@@ -14,6 +14,8 @@ type FormModalProps = {
   onSubmit: (values: FormValues) => void | Promise<void>;
   submitLabel?: string;
   closeLabel?: string;
+  /** Extra classes for the dialog (e.g. a wider width). */
+  className?: string;
 };
 
 /** Generic "add/edit entity" modal driven by a field config. */
@@ -26,10 +28,11 @@ export function FormModal({
   onSubmit,
   submitLabel = "Save",
   closeLabel = "Close",
+  className,
 }: FormModalProps) {
   const close = () => onOpenChange(false);
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title}>
+    <Modal open={open} onOpenChange={onOpenChange} title={title} className={className}>
       {/* Mounted only while open, so every open starts from a fresh form. */}
       <EntityForm
         fields={fields}

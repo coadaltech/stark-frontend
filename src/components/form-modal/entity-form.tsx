@@ -185,6 +185,7 @@ export function EntityForm({ fields: fieldsProp, initialValues, onSubmit, onSucc
                   className={cn(
                     "flex min-h-[31px] items-center text-[13px] text-[#333]",
                     field.compact ? "gap-[18px]" : "gap-[62px]",
+                    field.alignWithInputs && "mt-[29px]",
                   )}
                 >
                   <input

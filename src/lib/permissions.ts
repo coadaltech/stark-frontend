@@ -26,6 +26,7 @@ export type MyPermissions = { menus: PermissionMenu[]; permissions: Record<strin
  */
 export const PAGE_ROUTES: Record<string, string> = {
   "staff-list": "/staff",
+  "shift-list": "/shifts",
 };
 
 /** Server only: the signed-in user's permissions on this organization site (one API call per request). */
